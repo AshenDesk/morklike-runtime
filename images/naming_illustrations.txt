@@ -1,0 +1,27 @@
+ROOM ILLUSTRATIONS (NAME LIKE THIS):
+
+entrance.png
+dining_hall.png
+library.png
+guard_room.png
+cells.png
+corridor.png
+pump_room.png
+chain_room.png
+gem_room.png
+tunnel.png
+greenhouse.png
+statue_room.png
+aldon_room.png
+debris_room.png
+forge.png
+
+
+CHARACTERS:
+
+aldon.png
+fletcher.png
+guards.png
+gutworm.png
+lesdy.png
+violinists.png
