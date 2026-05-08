@@ -1,9 +1,7 @@
-# MÖRK BORG — Interactive Solo Edition
+# MÖRK BORG — Interactive Solo Edition v1.0.1
 
 > *"A doom metal album of a game."*
 > A web-based, offline-capable solo RPG adaptation of MÖRK BORG.
-
-<https://loboguar4.github.io/morklike-runtime/>
 
 ---
 
@@ -47,6 +45,12 @@ The player descends into a cursed dungeon beneath a dying world. Fifteen interco
 - Chain Room north door — examination, forced entry, iron hook mechanic
 - Tunnel with heavy armor restriction and greenhouse crawl
 - Flee system with adjacent-room choice
+
+---
+
+## Updates - ver 1.0.1
+
+- 08/05/2026 - Occult Herbmaster: Alternative move in Tunnels when using Spider-Owl Soup (after falling from a trap): [CLIMB BACK UP THE PIT SHAFT (SPIDER-OWL SOUP)]
 
 ---
 

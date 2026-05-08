@@ -1411,7 +1411,7 @@ function useDecoction(item){
     ()=>{G.player.effects.push({type:'debuff',label:'Vapor: Hallucinations',turns:3,val:0});log(`Ezumiel's Vapor: hallucinations for D4 hours.`,'le-action');},
     ()=>{log('Southern Frog Stew: vomiting for D4 hours. You are incapacitated.','le-fail');G.player.effects.push({type:'debuff',label:'Sick: No actions',turns:2,val:0});},
     ()=>{const h=d(6);heal(h);G.flags.infected=false;log(`Elixir Vitalis: +${h} HP, infection cleared.`,'le-heal');},
-    ()=>{G.player.effects.push({type:'buff',label:'Spider-Owl Soup: Darkvision+Wall',turns:3,val:0});log('Spider-Owl Soup: see in dark, climb walls (30 min).','le-ok');},
+    ()=>{G.player.effects.push({type:'buff',label:'Spider-Owl Soup: Darkvision+Wall',turns:3,val:0});log('Spider-Owl Soup: see in dark, climb walls (30 min).','le-ok');renderActions();},
     ()=>{G.player.effects.push({type:'buff',label:"Fernor's Philtre: PRE+2",turns:3,val:2,stat:'pre'});log("Fernor's Philtre: Presence +2 for D4 hours.","le-ok");},
     ()=>{G.player.effects.push({type:'buff',label:'Enervating Snuff: BERSERK',turns:1,val:0,berserk:true});log("Hyphos' Enervating Snuff: BERSERK — 2 attacks, Defence DR14.","le-ok");},
     ()=>{const dm=d(6);takeDamage(dm,'black poison');G.player.effects.push({type:'debuff',label:'Blinded 1hr',turns:3,val:0});log(`Black Poison: −${dm} HP + blinded 1 hr.`,'le-fail');},
@@ -2337,6 +2337,7 @@ function getRoomActions(roomId){
             } else {
               log(`AGI DR${trapDR}: <span class='le-fail'>fail (${s.total})</span>. The pit trap opens beneath your feet!`,'le-broken');
               F.pitTrapTriggered=true;
+              F.corridorFellToTunnel=true; // enables Spider-Owl Soup climb-back in tunnel
               const dm=Math.max(0,d(6)-(G.player.armorTier>0?d(G.player.armorTier===1?2:4):0));
               takeDamage(dm,'pit trap fall');
               log(`<span class='le-dmg'>${dm} dmg from the fall. You land in the tunnel below.</span>`,'le-dmg');
@@ -2441,6 +2442,28 @@ function getRoomActions(roomId){
           log(`You heave the heavy armor back on. Armor Tier ${G.player.armorTier} restored.`,'le-ok');
           renderStats();renderActions();
         }});
+      // Spider-Owl Soup wall-climb: available only if player fell from the corridor pit trap
+      if(F.corridorFellToTunnel){
+        const hasClimb=G.player.effects&&G.player.effects.some(e=>e.label&&e.label.includes('Spider-Owl'));
+        if(hasClimb){
+          acts.push({id:'climb_back_corridor',
+            label:'✦ Climb back up the pit shaft (Spider-Owl Soup)',
+            type:'spec',
+            fn:()=>{
+              log(`You press your palms flat against the stone — and they hold. The soup's bond is uncanny. Hand over hand, you haul yourself up the shaft and roll back onto the corridor floor, filthy but alive.`,'le-ok');
+              G.flags.corridorFellToTunnel=false;
+              G.flags.pitTrapKnown=true; // you now know exactly where the trap is
+              enterRoom(6);
+            }
+          });
+        } else {
+          acts.push({id:'pit_shaft_impassable',
+            label:'The pit shaft is sheer — no footholds',
+            type:'',
+            fn:()=>log(`Smooth wet stone. Nothing to grip. You need something to stick to the walls — Spider-Owl Soup would do it.`,'le-sys')
+          });
+        }
+      }
       break;
     case 11:
       if(!F.lesdyMet){
@@ -2939,7 +2962,7 @@ function lockpickDebrisSouth(){
 }
 function takePainting(){
   if(G.flags.pitTrapKnown){G.flags.paintingsRemoved=true;G.player.silver+=3;log('You carefully remove the painting, stepping around the pit trap edges. The frame is worth something. +3 silver.','le-loot');renderStats();}
-  else{G.flags.paintingsRemoved=true;log('You reach for the painting. The floor gives way. <span class="le-fail">Pit trap!</span>','le-fail');const dm=Math.max(0,d(6)-(G.player.armorTier>0?d(G.player.armorTier===1?2:4):0));takeDamage(dm,'pit fall');log(`<span class='le-dmg'>${dm} dmg from the fall.</span>`,'le-dmg');setTimeout(()=>enterRoom(10),1000);}
+  else{G.flags.paintingsRemoved=true;G.flags.corridorFellToTunnel=true;log('You reach for the painting. The floor gives way. <span class="le-fail">Pit trap!</span>','le-fail');const dm=Math.max(0,d(6)-(G.player.armorTier>0?d(G.player.armorTier===1?2:4):0));takeDamage(dm,'pit fall');log(`<span class='le-dmg'>${dm} dmg from the fall.</span>`,'le-dmg');setTimeout(()=>enterRoom(10),1000);}
 }
 function triggerRandomEncounter(roomId){
   G.flags['randEnc'+roomId]=true;
