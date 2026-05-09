@@ -1111,6 +1111,20 @@ function doTest(stat,dr,callback){
   if(callback) callback({raw,mod,total,dr,success,crit:raw===20,fumble:raw===1});
 }
 
+// Returns the effective value of a stat after all active effects are applied.
+// Used for display AND for tests (doTest already applies these inline).
+function getEffectiveStat(statKey){
+  const P=G.player;
+  let val=P[statKey]||0;
+  for(const e of P.effects){
+    if(!e.val) continue;
+    if(e.stat===statKey)                                            val+=e.val;
+    if(e.stat==='pre_agi'&&(statKey==='pre'||statKey==='agi'))      val+=e.val;
+    if(e.stat==='str_tou'&&(statKey==='str'||statKey==='tou'))      val+=e.val;
+  }
+  return Math.max(-3,Math.min(3,val)); // clamp to MÖRK BORG range
+}
+
 // ─── ENEMY DEFS ───────────────────────────────────
 const ENEMY_DEFS={
   guard:{name:'Crooked Guard',maxHp:8,morale:7,armorDie:2,dmgDie:6,desc:'thin man with filed teeth, vacant eyes'},
@@ -1407,14 +1421,56 @@ function useDecoction(item){
   const r=item.decoctionType||d(8);
   const effects=[
     null,
-    ()=>{const dm=d(10);if(G.combatActive&&G.enemies[G.enemyIdx])G.enemies[G.enemyIdx].hp=Math.max(0,G.enemies[G.enemyIdx].hp-dm);log(`Red Poison: enemy −${dm} HP (Toughness DR12).`,'le-ok');},
-    ()=>{G.player.effects.push({type:'debuff',label:'Vapor: Hallucinations',turns:3,val:0});log(`Ezumiel's Vapor: hallucinations for D4 hours.`,'le-action');},
-    ()=>{log('Southern Frog Stew: vomiting for D4 hours. You are incapacitated.','le-fail');G.player.effects.push({type:'debuff',label:'Sick: No actions',turns:2,val:0});},
-    ()=>{const h=d(6);heal(h);G.flags.infected=false;log(`Elixir Vitalis: +${h} HP, infection cleared.`,'le-heal');},
-    ()=>{G.player.effects.push({type:'buff',label:'Spider-Owl Soup: Darkvision+Wall',turns:3,val:0});log('Spider-Owl Soup: see in dark, climb walls (30 min).','le-ok');renderActions();},
-    ()=>{G.player.effects.push({type:'buff',label:"Fernor's Philtre: PRE+2",turns:3,val:2,stat:'pre'});log("Fernor's Philtre: Presence +2 for D4 hours.","le-ok");},
-    ()=>{G.player.effects.push({type:'buff',label:'Enervating Snuff: BERSERK',turns:1,val:0,berserk:true});log("Hyphos' Enervating Snuff: BERSERK — 2 attacks, Defence DR14.","le-ok");},
-    ()=>{const dm=d(6);takeDamage(dm,'black poison');G.player.effects.push({type:'debuff',label:'Blinded 1hr',turns:3,val:0});log(`Black Poison: −${dm} HP + blinded 1 hr.`,'le-fail');},
+    // 1 — Red Poison: enemy TOU DR12 or D10 damage
+    ()=>{
+      if(G.combatActive&&G.enemies[G.enemyIdx]){
+        const e=G.enemies[G.enemyIdx];
+        const roll=d(20);
+        log(`Red Poison: enemy TOU DR12 — d20(${roll}) → ${roll>=12?'resists':'fails'}!`,'le-ok');
+        if(roll<12){const dm=d(10);e.hp=Math.max(0,e.hp-dm);log(`Poison burns through: ${dm} HP. ${e.name} HP: ${e.hp}/${e.maxHp}`,'le-ok');}
+        else log(`${e.name} shrugs off the poison.`,'le-sys');
+      } else log(`Red Poison: use in combat to administer it.`,'le-sys');
+    },
+    // 2 — Ezumiel's Vapor: PRE-2, AGI-1 for 3 rooms
+    ()=>{
+      G.player.effects.push({type:'debuff',label:"Vapor: PRE−2",turns:3,val:-2,stat:'pre'});
+      G.player.effects.push({type:'debuff',label:"Vapor: AGI−1",turns:3,val:-1,stat:'agi'});
+      log(`Ezumiel's Vapor: hallucinations. PRE−2, AGI−1 for 3 rooms.`,'le-fail');
+    },
+    // 3 — Southern Frog Stew: all Tests+3 for 2 rooms
+    ()=>{
+      G.player.effects.push({type:'debuff',label:'Frog Stew: Tests+3',turns:2,val:3,stat:'global_dr'});
+      log(`Southern Frog Stew: vomiting. All tests DR+3 for 2 rooms.`,'le-fail');
+    },
+    // 4 — Elixir Vitalis: heal 2D6, cure infection
+    ()=>{
+      const h=d(6)+d(6);heal(h);
+      G.flags.infected=false;G.player.effects=G.player.effects.filter(e=>e.type!=='infect');
+      log(`Elixir Vitalis: <span class='le-heal'>+${h} HP</span>. Infection cleared.`,'le-heal');
+    },
+    // 5 — Spider-Owl Soup: wall climbing + darkvision
+    ()=>{
+      G.player.effects.push({type:'buff',label:'Spider-Owl Soup: Darkvision+Wall',turns:3,val:0});
+      log('Spider-Owl Soup: stick to walls, see in darkness (3 rooms).','le-ok');
+      renderActions();
+    },
+    // 6 — Fernor's Philtre: PRE+2 for 3 rooms
+    ()=>{
+      G.player.effects.push({type:'buff',label:"Fernor's Philtre: PRE+2",turns:3,val:2,stat:'pre'});
+      log(`Fernor's Philtre: Presence +2 for 3 rooms.`,'le-ok');
+    },
+    // 7 — Enervating Snuff: BERSERK + STR+1 for 1 round
+    ()=>{
+      G.player.effects.push({type:'buff',label:'BERSERK: 2×ATK STR+1 DEF DR14',turns:1,val:1,stat:'str',berserk:true});
+      log("Hyphos' Enervating Snuff: BERSERK. 2 attacks, STR+1, Defence DR14.",'le-ok');
+    },
+    // 8 — Black Poison: self-damage + Blinded (AGI-2, Tests+2)
+    ()=>{
+      const dm=d(6);takeDamage(dm,'black poison');
+      G.player.effects.push({type:'debuff',label:'Blinded: AGI−2',turns:3,val:-2,stat:'agi'});
+      G.player.effects.push({type:'debuff',label:'Blinded: Tests+2',turns:3,val:2,stat:'global_dr'});
+      log(`Black Poison: ${dm} HP damage, blinded — AGI−2 and all Tests+2 for 3 rooms.`,'le-fail');
+    },
   ];
   (effects[r]||effects[4])();
   removeItemByKey(item.key);
@@ -3501,11 +3557,17 @@ function renderStats(){
   const fill=document.getElementById('hp-fill');
   fill.style.width=pct+'%';fill.className='hp-fill'+(pct<=20?' critical':pct<=50?' mid':'');
   document.getElementById('hp-cur').textContent=P.hp;document.getElementById('hp-max').textContent=P.maxHp;
-  // Abilities
+  // Abilities — show effective value (base + active modifiers)
   const abGrid=document.getElementById('ab-grid');abGrid.innerHTML='';
   for(const [k,label] of Object.entries({str:'STR',agi:'AGI',pre:'PRE',tou:'TOU'})){
-    const v=P[k];const cls=v>0?'p':v<0?'n':'z';
-    abGrid.innerHTML+=`<div class='ab-item'><span class='ab-lbl'>${label}</span><span class='ab-val ${cls}'>${v>0?'+'+v:v}</span></div>`;
+    const base=P[k];
+    const eff=getEffectiveStat(k);
+    const delta=eff-base;
+    const cls=eff>0?'p':eff<0?'n':'z';
+    const deltaHtml=delta!==0
+      ?`<span style="font-size:.52rem;opacity:.7;color:${delta>0?'var(--green2)':'var(--red2)'}"> ${delta>0?'+':''}${delta}</span>`
+      :'';
+    abGrid.innerHTML+=`<div class='ab-item' title="${label}: base ${base>0?'+'+base:base}${delta!==0?', modified '+delta:''}"><span class='ab-lbl'>${label}</span><span class='ab-val ${cls}'>${eff>0?'+'+eff:eff}${deltaHtml}</span></div>`;
   }
   // Resources
   const foodEl=document.getElementById('sp-food');const waterEl=document.getElementById('sp-water');
