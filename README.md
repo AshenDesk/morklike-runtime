@@ -1,5 +1,7 @@
 # MÖRK BORG — Interactive Solo Edition v1.0.2
 
+<https://loboguar4.github.io/morklike-runtime/>
+
 > *"A doom metal album of a game."*
 > A web-based, offline-capable solo RPG adaptation of MÖRK BORG.
 
@@ -48,9 +50,19 @@ The player descends into a cursed dungeon beneath a dying world. Fifteen interco
 
 ---
 
-## Updates - ver 1.0.2
+## Updates - ver 1.1 (17/05/2026)
 
-- IN PROGRESS - Full rework on Occult Herbmaster mechanics and adding more roleplaying options around the map.
+- Full rework on Occult Herbmaster mechanics and decoctions system.
+- Greenhouse interactions updated:
+  - corrected drops
+  - improved rest flow and recovery handling
+- Guard Room:
+  - corrected enemy drops and persistence behavior
+- Fixed armor swap logic and equipment replacement inconsistencies.
+- Multiple backend adjustments and interaction fixes across dungeon events.
+
+### Early
+
 - 09/05/2026 - Mini rework on Occult Herbmaster Decoctions and bug fix on Abilities grid (respond appropriately to potions, decoctions and other events).
 - 08/05/2026 - Occult Herbmaster: Alternative move in Tunnels when using Spider-Owl Soup (after falling from a trap): [CLIMB BACK UP THE PIT SHAFT (SPIDER-OWL SOUP)]
 
@@ -122,6 +134,7 @@ For mechanical bugs, please include the room, action taken, and the exact log ou
 - **Johan Nohr & Magnus Pålsson** — creators of MÖRK BORG
 - **Ockult Örtmästare Games & Stockholm Kartell** — publishers
 - The MÖRK BORG community and third-party ecosystem for keeping the game alive
+- **Jabrele** (@Jabrele_art) — artwork illustrations used in the `images/` folder
 
 ---
 
