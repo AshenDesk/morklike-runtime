@@ -1,4 +1,4 @@
-# MÖRK BORG — Interactive Solo Edition v1.0.2
+# MÖRK BORG — Interactive Solo Edition v1.1
 
 <https://loboguar4.github.io/morklike-runtime/>
 
