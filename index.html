@@ -295,8 +295,12 @@ body::after{content:'';position:fixed;inset:0;
 .inv-name{color:var(--text);}
 .inv-detail{color:var(--text3);font-style:italic;font-size:.72rem;}
 .inv-actions{display:flex;gap:.25rem;margin-top:.05rem;}
-.btn-use,.btn-drop,.btn-equip{font-family:var(--font-m);font-size:.56rem;padding:.12rem .35rem;
+.btn-use,.btn-drop,.btn-equip,.btn-throw,.btn-imbue{font-family:var(--font-m);font-size:.56rem;padding:.12rem .35rem;
   cursor:pointer;border:1px solid;background:none;letter-spacing:.06em;transition:all .15s;}
+.btn-throw{color:#d08040;border-color:#804020;}
+.btn-throw:hover{background:rgba(180,80,20,.15);border-color:#d06030;}
+.btn-imbue{color:#8080e0;border-color:#404080;}
+.btn-imbue:hover{background:rgba(100,100,200,.15);border-color:#9090ff;}
 .btn-use{color:var(--green2);border-color:var(--green);}
 .btn-use:hover{background:rgba(60,120,40,.15);border-color:var(--green2);}
 .btn-equip{color:var(--yellow2);border-color:var(--yellow);}
@@ -970,7 +974,11 @@ const ARMOR_LIST=[
   {key:'heavy',label:'Heavy Armor',detail:'Plate, −D6, Agi DR+4'},
 ];
 
-// ─── FLAVOUR TABLES ───────────────────────────────
+// Dropped armor metadata — used when key is not in the base ARMORS dict
+const DROPPED_ARMORS={
+  light_armor_guard:  {name:"Guard's Leather Vest",  label:'−D2',tier:1},
+  medium_coif_guard:  {name:"Guard's Chainmail Coif", label:'−D4',tier:2},
+};
 const TERRIBLE_TRAITS=['Endlessly aggravated','Inferiority complex','Problems with authority','Loud mouth','Cruel','Egocentric','Nihilistic','Prone to substance abuse','Conflicted','Shrewd','Vindictive','Cowardly','Lazy','Suspicious','Ruthless','Worried','Bitter','Deceitful','Wasteful','Arrogant'];
 const BROKEN_BODIES=['Staring manic gaze','Covered in blasphemous tattoos','Rotting face — wears a mask','Lost three toes, limps','Starved: gaunt and pale','One hand replaced with hook (D6)','Decaying teeth','Hauntingly beautiful, unnervingly clean','Hands caked with sores','Cataracts spreading in both eyes','Long tangled hair, cockroach resident','Broken, crushed ears','Juddering and stuttering from nerve damage','Corpulent, ravenous, drooling','One hand lacks thumb — grips like a lobster','Red, swollen alcoholic nose','Resting maniac face — friends are hard',`Chronic athlete's foot. Stinks.`,'Recently slashed eye under a patch','Nails cracked and black'];
 const BAD_HABITS=['Obsessively collect small sharp stones',`Won't use a blade without testing on own flesh`,`Can't stop drinking once you start`,'Gambling addict — must bet daily','Cannot tolerate criticism — rage and weeping','Unable to finish a story','Best friend is a skull. Carry it everywhere.','Picks nose so deep it bleeds','Laughs hysterically at own jokes then explains them','Nihilist. Tells everyone. At length.','Inveterate bug eater','Stress response: need to look fancy','Permanent phlegm — cough, snort, spit','Pyromaniac','Consistently loses important items','Insecure shit-stirrer — talks about whoever left','Stutters when lying','Giggles insanely at worst moments','Whistles while hiding (will deny this)','Makes jewellery from teeth of the dead'];
@@ -1071,11 +1079,11 @@ function isEncumbered(){return carryUsed()>carryMax();}
 function canPickUp(){return carryUsed()<carryHard();}
 function tryAddItem(item){
   // Stackable prefixes: decoctions have unique timestamp keys; food/waterskin can repeat.
-  const stackable = item.key && (
+  const stackable = item.stackable || (item.key && (
     item.key.startsWith('decoction_') ||
     item.key.startsWith('food_') ||
     item.key.startsWith('waterskin')
-  );
+  ));
   if(!stackable && item.key && G.player.inventory.find(i=>i.key===item.key)){
     log(`<span class='le-warn'>Already carrying: ${item.name}.</span>`,'le-sys');
     return false;
@@ -1352,6 +1360,8 @@ const ITEM_USE_MAP={
     log('You eat. Food +2 days. Starving condition cleared.','le-heal');
     removeItemByKey(item.key);renderStats();
   },
+  // Mouldy Ration — risky: TOU DR8 or sick; success = +1 food + D2 HP
+  mouldy_ration:(item)=>useMouldyRation(item),
   // waterskin
   waterskin_start:(item)=>{
     G.player.water=Math.min(G.player.water+4,8);
@@ -1376,6 +1386,22 @@ const ITEM_USE_MAP={
   lockpicks:(item)=>{log('Lockpicks ready. Use at a locked door.','le-sys');},
   decoction:(item)=>useDecoction(item),
 };
+
+function useMouldyRation(item){
+  log('You eat the mouldy ration. It smells wrong. Test Toughness DR8.','le-action');
+  doTest('tou',8,(s)=>{
+    if(s.success){
+      const h=d(2);heal(h);G.player.food=Math.min(G.player.food+1,10);
+      G.player.effects=G.player.effects.filter(e=>e.stat!=='str_tou');
+      log(`TOU DR8: <span class='le-ok'>success (${s.total})</span>. It stays down. <span class='le-heal'>+${h} HP, +1 food day.</span>`,'le-heal');
+    } else {
+      const dm=d(4);takeDamage(dm,'food poisoning');
+      G.player.effects.push({type:'debuff',label:'Food Poisoning: Tests+2',turns:2,val:2,stat:'global_dr'});
+      log(`TOU DR8: <span class='le-fail'>fail (${s.total})</span>. Violent cramps — ${dm} dmg, Tests+2 for 2 rooms.`,'le-fail');
+    }
+    removeItemByKey(item.key);renderStats();
+  });
+}
 
 function useScroll(power,item){
   if(G.player.illiterate){log('You cannot read scrolls — your mind is too primitive, or perhaps simply too alive.','le-fail');return;}
@@ -1417,62 +1443,188 @@ function scrollEffect(power,item){
     renderUI();
   }
 }
+// ─── HALLUCINATION ENGINE ─────────────────────────
+const HALLUCINATION_VOICES=[
+  // Voices from room characters
+  {src:'Lesdy',   text:`<em>"We could be allies, you and I."</em> She sounds close. Too close.`},
+  {src:'Lesdy',   text:`<em>"Sit with us. There is food. There is warmth."</em> The warmth is wrong. The warmth is teeth.`},
+  {src:'Fletcher',text:`<em>"I was thrown in here to die. The den became mine instead."</em> He says it like a lullaby.`},
+  {src:'Fletcher',text:`<em>"Run if you like."</em> Each word drips fat into a fire.`},
+  {src:'Bearded', text:`A rumbling laugh. Deep. From a man who has nowhere to be. The sound means nothing. The sound means everything.`},
+  // Disconnected whispers
+  {src:'void', text:`<em>"One less each time."</em> You don't know where that's from.`},
+  {src:'void', text:`<em>"The eye fits the socket. Trust this."</em> You weren't thinking about eyes.`},
+  {src:'void', text:`<em>"The violin will outlast you."</em> Probably true.`},
+  {src:'void', text:`<em>"He takes us one by one."</em> You feel watched from two directions at once.`},
+  // Hints (true or false, GM-roll feel)
+  {src:'hint+', text:`Something vast moves through the sludge and it is afraid of you. You don't know how you know.`,buff:true},
+  {src:'hint+', text:`You could survive this. The thought arrives with absolute certainty. Then it leaves.`,buff:true},
+  {src:'hint-', text:`The ceiling has been slowly descending. You are sure of it now.`},
+  {src:'hint-', text:`Something followed you from the last room. You can't look directly at it.`},
+];
+function triggerHallucination(){
+  const v=pick(HALLUCINATION_VOICES);
+  const header=v.src!=='void'&&v.src!=='hint+'&&v.src!=='hint-'
+    ?`<span style='opacity:.5;font-size:.75em'>[Voice]</span> ` : ''; // [Voice — ${v.src}]
+  log(`${header}${v.text}`,'le-event');
+  if(v.buff){
+    // Inspires: PRE+1 for 1 room
+    G.player.effects.push({type:'buff',label:'Inspired: PRE+1',turns:1,val:1,stat:'pre'});
+    log(`<span class='le-ok'>The vision steadies you somehow. PRE+1 next room.</span>`,'le-ok');
+    renderStats();
+  } else if(v.src==='hint-'){
+    // Disturbs: PRE-1 for 1 room
+    G.player.effects.push({type:'debuff',label:'Disturbed: PRE−1',turns:1,val:-1,stat:'pre'});
+    renderStats();
+  }
+}
+
+// Throw a decoction as a ranged attack (AGI DR10 to hit)
+function throwDecoction(key){
+  if(!G.combatActive||!G.enemies[G.enemyIdx]){log('Nothing to throw at — use in combat.','le-fail');return;}
+  const item=G.player.inventory.find(i=>i.key===key);if(!item)return;
+  const e=G.enemies[G.enemyIdx];
+  const t=item.decoctionType;
+  doTest('agi',10,(s)=>{
+    log(`Throw ${item.name}: AGI DR10 — d20(${s.raw})+AGI(${G.player.agi})=${s.total} → ${s.success?'✓ HIT':'✗ MISS'}`,'le-sys');
+    if(s.success){
+      if(t===1){
+        // Red Poison thrown: splashes on contact, no TOU test — D8 direct
+        const dm=d(8);e.hp=Math.max(0,e.hp-dm);
+        log(`Vial shatters on ${e.name}. Acid-red splash — ${dm} direct damage. HP: ${e.hp}/${e.maxHp}`,'le-ok');
+        if(e.hp<=0){log(`<span class='le-kill'>${e.name} dies.</span>`,'le-kill');onEnemyDead(e);removeItemByKey(key);return;}
+      } else if(t===8){
+        // Black Poison thrown: blinds enemy (attack DR+2 for 2 rounds) — and splashes you D4
+        e.effects=(e.effects||[]);e.poisonBlind=(e.poisonBlind||0)+2;
+        const splash=Math.max(0,d(4)-1);if(splash>0){takeDamage(splash,'poison splash');}
+        log(`Vial shatters. ${e.name} is blinded for 2 rounds — its attacks DR+2. ${splash>0?`You take ${splash} splash damage.`:''}`,'le-ok');
+      }
+    } else {
+      // Miss: it hits the floor — splash check
+      const splash=d(4);takeDamage(Math.max(0,splash-2),'missed throw splash');
+      log(`Vial misses and shatters at your feet. ${Math.max(0,splash-2)} splash.`,'le-fail');
+    }
+    removeItemByKey(key);doEnemyAttack(()=>renderUI());
+  });
+}
+
+// Imbue weapon with Red Poison (next hit auto-poisons)
+function imbueDecoction(key){
+  if(G.combatActive){log('Cannot imbue during combat.','le-fail');return;}
+  const item=G.player.inventory.find(i=>i.key===key);if(!item)return;
+  if(item.decoctionType!==1){log('Only Red Poison can imbue a weapon.','le-sys');return;}
+  G.player.effects.push({type:'buff',label:'Weapon: Poisoned (next hit)',turns:99,val:0,stat:'imbue_poison'});
+  log(`You coat your ${G.player.weapon.name} in Red Poison. The next hit auto-applies poison — no TOU test.`,'le-ok');
+  removeItemByKey(key);renderStats();
+}
+
 function useDecoction(item){
   const r=item.decoctionType||d(8);
-  const effects=[
-    null,
-    // 1 — Red Poison: enemy TOU DR12 or D10 damage
-    ()=>{
+
+  // ── Check imbued weapon proc ──
+  // If weapon is imbued and this is combat damage, consume the imbue instead
+  // (That's handled in combatAttack; here we just use the item directly.)
+
+  switch(r){
+    case 1: { // Red Poison — drink/administer in combat
       if(G.combatActive&&G.enemies[G.enemyIdx]){
         const e=G.enemies[G.enemyIdx];
         const roll=d(20);
-        log(`Red Poison: enemy TOU DR12 — d20(${roll}) → ${roll>=12?'resists':'fails'}!`,'le-ok');
-        if(roll<12){const dm=d(10);e.hp=Math.max(0,e.hp-dm);log(`Poison burns through: ${dm} HP. ${e.name} HP: ${e.hp}/${e.maxHp}`,'le-ok');}
-        else log(`${e.name} shrugs off the poison.`,'le-sys');
-      } else log(`Red Poison: use in combat to administer it.`,'le-sys');
-    },
-    // 2 — Ezumiel's Vapor: PRE-2, AGI-1 for 3 rooms
-    ()=>{
+        log(`Red Poison (administered): enemy TOU DR12 — d20(${roll}) → ${roll>=12?'resists':'fails'}!`,'le-sys');
+        if(roll<12){const dm=d(10);e.hp=Math.max(0,e.hp-dm);log(`Poison takes hold: ${dm} damage. ${e.name} HP: ${e.hp}/${e.maxHp}`,'le-ok');}
+        else log(`${e.name} resists the poison.`,'le-sys');
+        // Adverse: handling poison risks a drop — TOU DR8 or take D4
+        doTest('tou',8,(s)=>{if(!s.success){const splash=d(4)-2;if(splash>0){takeDamage(splash,'poison handling');log(`<span class='le-warn'>Adverse: poison on hands — ${splash} self-damage.</span>`,'le-fail');}}});
+      } else log(`Red Poison: use in combat or throw it.`,'le-sys');
+      break;
+    }
+    case 2: { // Ezumiel's Vapor — PRE-2, AGI-1 + hallucination roll
       G.player.effects.push({type:'debuff',label:"Vapor: PRE−2",turns:3,val:-2,stat:'pre'});
       G.player.effects.push({type:'debuff',label:"Vapor: AGI−1",turns:3,val:-1,stat:'agi'});
-      log(`Ezumiel's Vapor: hallucinations. PRE−2, AGI−1 for 3 rooms.`,'le-fail');
-    },
-    // 3 — Southern Frog Stew: all Tests+3 for 2 rooms
-    ()=>{
-      G.player.effects.push({type:'debuff',label:'Frog Stew: Tests+3',turns:2,val:3,stat:'global_dr'});
-      log(`Southern Frog Stew: vomiting. All tests DR+3 for 2 rooms.`,'le-fail');
-    },
-    // 4 — Elixir Vitalis: heal 2D6, cure infection
-    ()=>{
+      log(`Ezumiel's Vapor: reality frays. PRE−2, AGI−1 for 3 rooms.`,'le-fail');
+      // Hallucination trigger: d4 rolls, one per room (start now + 2 more queued)
+      const halluCount=d(4);
+      log(`You begin hallucinating — ${halluCount} vision${halluCount>1?'s':''} incoming.`,'le-event');
+      for(let i=0;i<halluCount;i++) setTimeout(()=>triggerHallucination(),(i+1)*900);
+      break;
+    }
+    case 3: { // Southern Frog Stew — vomiting; Tests+3 BUT purges poisons/drugs
+      const PURGE_LABELS=['poison','blinded','burn','vapor','snuff','drugged','drug','toxic'];
+      const isPurgeable=e=>
+        e.type==='infect'||e.berserk||
+        PURGE_LABELS.some(w=>e.label&&e.label.toLowerCase().includes(w));
+      const purged=G.player.effects.filter(isPurgeable);
+      G.player.effects=G.player.effects.filter(e=>!isPurgeable(e));
+      G.player.effects.push({type:'debuff',label:'Vomiting: Tests+3',turns:2,val:3,stat:'global_dr'});
+      log(`Southern Frog Stew: violent vomiting. All tests DR+3 for 2 rooms.`,'le-fail');
+      if(purged.length>0){
+        const purgedNames=purged.map(e=>e.label).filter((v,i,a)=>a.indexOf(v)===i).join(', ');
+        log(`<span class='le-ok'>Purge successful — expelled: ${purgedNames}.</span>`,'le-ok');
+        // Also clear global flags for those conditions
+        if(purged.some(e=>e.type==='infect')) G.flags.infected=false;
+        if(purged.some(e=>e.berserk||e.label.includes('Snuff'))) G.flags.berserkActive=false;
+        if(purged.some(e=>e.label&&(e.label.includes('Drugged')||e.label.includes('drug')))){
+          log(`<span class='le-ok'>Lesdy's brew — purged. The hosts were wrong about your hospitality.</span>`,'le-ok');
+        }
+      } else {
+        log(`Nothing to purge. You vomit for nothing. The corridor appreciates it less than you do.`,'le-fail');
+      }
+      // Bonus: 1-in-6 chance clears infection even if not already purged
+      if(!G.flags.infected&&d(6)===1){/* already clean */}
+      else if(G.flags.infected&&d(6)>=4){G.flags.infected=false;G.player.effects=G.player.effects.filter(e=>e.type!=='infect');log(`<span class='le-ok'>Infection also expelled.</span>`,'le-ok');}
+      break;
+    }
+    case 4: { // Elixir Vitalis — heal 2D6, cure infection
       const h=d(6)+d(6);heal(h);
       G.flags.infected=false;G.player.effects=G.player.effects.filter(e=>e.type!=='infect');
       log(`Elixir Vitalis: <span class='le-heal'>+${h} HP</span>. Infection cleared.`,'le-heal');
-    },
-    // 5 — Spider-Owl Soup: wall climbing + darkvision
-    ()=>{
-      G.player.effects.push({type:'buff',label:'Spider-Owl Soup: Darkvision+Wall',turns:3,val:0});
-      log('Spider-Owl Soup: stick to walls, see in darkness (3 rooms).','le-ok');
+      // Adverse: occasionally causes brief nausea
+      if(d(6)===1){G.player.effects.push({type:'debuff',label:'Nausea: PRE−1',turns:1,val:-1,stat:'pre'});log(`<span class='le-warn'>Adverse: brief nausea. PRE−1 next room.</span>`,'le-warn');}
+      break;
+    }
+    case 5: { // Spider-Owl Soup — AGI+1, wall-climbing, darkvision + item discovery chance
+      G.player.effects.push({type:'buff',label:'Spider-Owl: AGI+1 Climb+Dark',turns:3,val:1,stat:'agi',spiderOwl:true});
+      log(`Spider-Owl Soup: AGI+1, stick to walls, see in darkness (3 rooms).`,'le-ok');
+      // Immediately roll for item discovery in current room
+      if(d(6)>=5&&!G.combatActive){
+        const found=pick([
+          {name:'Lockpick',key:'lockpicks',detail:'Agility DR8 to open locks',usable:true},
+          {name:'Forgotten silver',key:`found_silver_${Date.now()}`,detail:'3s'}, // special: just add silver
+          {name:'Cracked vial (Red Poison)',key:`decoction_${Date.now()}_1`,detail:'Single use',usable:true,decoctionType:1},
+        ]);
+        if(found.key.includes('found_silver')){G.player.silver+=3;log(`Your sharpened senses catch a glint — 3s in a crack. <span class='le-loot'>+3s.</span>`,'le-loot');}
+        else{tryAddItem(found);log(`Your sharpened senses catch something in the dark — <span class='le-loot'>${found.name} found.</span>`,'le-loot');}
+      }
       renderActions();
-    },
-    // 6 — Fernor's Philtre: PRE+2 for 3 rooms
-    ()=>{
+      break;
+    }
+    case 6: { // Fernor's Philtre — PRE+2, and PRE test for bonus inspiration
       G.player.effects.push({type:'buff',label:"Fernor's Philtre: PRE+2",turns:3,val:2,stat:'pre'});
-      log(`Fernor's Philtre: Presence +2 for 3 rooms.`,'le-ok');
-    },
-    // 7 — Enervating Snuff: BERSERK + STR+1 for 1 round
-    ()=>{
+      log(`Fernor's Philtre: Presence +2 for 3 rooms. Voices sound reasonable. They are not.`,'le-ok');
+      // Adverse: on a bad roll, hear voices anyway (mini-hallucination without the buff)
+      if(d(6)===1){setTimeout(()=>{log(`<span class='le-warn'>Adverse: the philtre opens too wide —</span>`,'le-warn');triggerHallucination();},800);}
+      break;
+    }
+    case 7: { // Enervating Snuff — BERSERK, STR+1, Defence DR14; adverse: crash after
       G.player.effects.push({type:'buff',label:'BERSERK: 2×ATK STR+1 DEF DR14',turns:1,val:1,stat:'str',berserk:true});
-      log("Hyphos' Enervating Snuff: BERSERK. 2 attacks, STR+1, Defence DR14.",'le-ok');
-    },
-    // 8 — Black Poison: self-damage + Blinded (AGI-2, Tests+2)
-    ()=>{
-      const dm=d(6);takeDamage(dm,'black poison');
+      log(`Hyphos' Enervating Snuff: BERSERK. 2 attacks, STR+1, Defence DR14 this round.`,'le-ok');
+      // Adverse: after berserk wears off, STR-1 and AGI-1 for 2 rooms (crash)
+      G.player.effects.push({type:'debuff',label:'Snuff Crash: STR−1 AGI−1',turns:2,val:-1,stat:'str'});
+      G.player.effects.push({type:'debuff',label:'Snuff Crash: AGI−1',turns:2,val:-1,stat:'agi'});
+      log(`<span class='le-warn'>Adverse: after the rage — STR−1, AGI−1 for 2 rooms.</span>`,'le-warn');
+      break;
+    }
+    case 8: { // Black Poison — if drunk: self-harm + blinded; adverse: much worse
+      const dm=d(6);takeDamage(dm,'black poison ingested');
       G.player.effects.push({type:'debuff',label:'Blinded: AGI−2',turns:3,val:-2,stat:'agi'});
       G.player.effects.push({type:'debuff',label:'Blinded: Tests+2',turns:3,val:2,stat:'global_dr'});
-      log(`Black Poison: ${dm} HP damage, blinded — AGI−2 and all Tests+2 for 3 rooms.`,'le-fail');
-    },
-  ];
-  (effects[r]||effects[4])();
+      log(`Black Poison (ingested): ${dm} HP, blinded — AGI−2, all Tests+2 for 3 rooms.`,'le-fail');
+      log(`<em>Why did you drink that?</em>`,'le-event');
+      break;
+    }
+    default:
+      log('Unknown decoction — it tastes of regret.','le-sys');
+  }
   removeItemByKey(item.key);
   renderStats();
 }
@@ -1486,6 +1638,7 @@ function useItem(key){
   if(key.startsWith('scroll_daemon')) {useScroll('daemon_capillaries',item);return;}
   if(key.startsWith('scroll_storm')) {useScroll('nine_violet',item);return;}
   if(key.startsWith('decoction')) {useDecoction(item);return;}
+  if(key==='mouldy_ration'){useMouldyRation(item);return;}
   if(key.startsWith('waterskin')) {ITEM_USE_MAP['waterskin_start']?ITEM_USE_MAP['waterskin_start'](item):ITEM_USE_MAP.waterskin(item);return;}
   if(key.startsWith('food')) {const fn=ITEM_USE_MAP.food_start||ITEM_USE_MAP.food_ration;fn(item);return;}
   log(`${item.name}: no use defined. Drop it if unneeded.`,'le-sys');
@@ -1531,6 +1684,26 @@ function equipItem(key){
     P.weaponKey=key;
     P.weapon=Object.assign({},WEAPONS[key],{name:item.name||WEAPONS[key].name});
     log(`Equipped ${P.weapon.name} (${WEAPONS[key].label}).`,'le-ok');
+    removeItemByKey(key);
+
+  } else if(item.armorTier!==undefined||key.includes('armor')||key.includes('coif')||key.includes('vest')){
+    // ── Equip armor — return current armor to inventory first ──
+    const prevArmorKey=P.armorKey;
+    const prevArmorTier=P.armorTier;
+    if(prevArmorKey&&prevArmorKey!=='none'&&prevArmorKey!==key&&prevArmorTier>0){
+      const prevArmorDef=ARMORS[prevArmorKey];
+      const prevArmorName=prevArmorDef?prevArmorDef.name:prevArmorKey;
+      const prevArmorLabel=prevArmorDef?prevArmorDef.label:'—';
+      tryAddItem({name:prevArmorName,detail:prevArmorLabel,key:prevArmorKey,equippable:true,armorTier:prevArmorTier});
+      log(`Previous armor (${prevArmorName}) returned to inventory.`,'le-sys');
+    }
+    // Determine tier from item or ARMORS lookup
+    const newTier=item.armorTier!==undefined?item.armorTier:(ARMORS[key]?.tier||DROPPED_ARMORS[key]?.tier||1);
+    P.armorKey=key;P.armorTier=newTier;
+    const arDef=ARMORS[key]||DROPPED_ARMORS[key]||null;
+    const displayName=arDef?arDef.name:item.name;
+    const displayLabel=arDef?arDef.label:(newTier===1?'−D2':newTier===2?'−D4':'−D6');
+    log(`Equipped ${displayName} — Armor Tier ${newTier}, ${displayLabel}.${newTier>=2?' AGI penalty applies.':''}`,'le-ok');
     removeItemByKey(key);
 
   } else if(key.startsWith('scroll')){
@@ -1827,6 +2000,14 @@ function combatAttack(){
     else log(`Attack: d20(${raw})+${atkBonus}=${total} vs DR${atkDR} — <span class='le-ok'>HIT.</span> ${finalDmg} dmg. ${e.name} HP: ${Math.max(0,e.hp)}/${e.maxHp}`,'le-ok');
     // Spend bolt if crossbow
     if(G.player.weaponKey&&G.player.weaponKey.includes('crossbow')) spendBolt();
+    // Apply imbued poison on hit
+    const imbueEff=G.player.effects.find(ef=>ef.stat==='imbue_poison');
+    if(imbueEff&&finalDmg>0){
+      G.player.effects=G.player.effects.filter(ef=>ef!==imbueEff);
+      const poisonRoll=d(20);
+      log(`Imbued poison activates: enemy TOU DR12 — d20(${poisonRoll}) → ${poisonRoll>=12?'resists':'fails'}!`,'le-sys');
+      if(poisonRoll<12){const pd=d(8);e.hp=Math.max(0,e.hp-pd);log(`Poison adds ${pd} damage. ${e.name} HP: ${e.hp}/${e.maxHp}`,'le-ok');}
+    }
     // Fletcher flesh rain
     if(e.powers&&finalDmg>0){doTest('agi',8,(s)=>{if(!s.success){const fd=d(4);takeDamage(fd,'falling flesh');log(`Flesh rain: ${fd} dmg.`,'le-dmg');}});}
     // Gutworm devour check (on player attack, if it bites back)
@@ -1846,7 +2027,20 @@ function combatAttack(){
     // Miss still spends a bolt
     if(G.player.weaponKey&&G.player.weaponKey.includes('crossbow')) spendBolt();
   }
-  if(e.hp>0) setTimeout(()=>doEnemyAttack(()=>renderUI()),400);
+  if(e.hp>0){
+    // Berserk second attack fires automatically — no extra turn cost
+    if(G.player.effects.find(ef=>ef.berserk)&&!G._berserkSecondDone){
+      G._berserkSecondDone=true;
+      setTimeout(()=>{
+        log(`⚡ BERSERK: second strike!`,'le-crit');
+        combatAttack();
+        G._berserkSecondDone=false;
+      },350);
+    } else {
+      G._berserkSecondDone=false;
+      setTimeout(()=>doEnemyAttack(()=>renderUI()),400);
+    }
+  }
 }
 function doEnemyAttack(callback){
   const e=getCurrentEnemy();if(!e||e.hp<=0){if(callback)callback();return;}
@@ -1910,21 +2104,54 @@ function onEnemyDead(e){
     silver=roll(6,1)*20; // enormous creature — unusual loot
     G.player.silver+=silver;
     log(`<span class='le-loot'>In the sludge around the Gutworm you find ${silver} silver worth of offerings thrown in over the years.</span>`,'le-loot');
-  } else if(e.name.includes('Lesdy')){
-    // Lesdy is dead — check if all remaining enemies are also dead
+  // NOTE: Host check MUST come before Lesdy — "Lesdy's Host".includes('Lesdy') is true
+  } else if(e.name.includes('Host')){
+    G.flags.lesdyClear=(G.enemies.every(en=>en.hp<=0));
+    if(d(6)>=4){silver=d(4)*2;G.player.silver+=silver;log(`<span class='le-loot'>+${silver}s on the body.</span>`,'le-loot');}
+    if(tryAddItem({name:"Host's Knife",detail:'D4 damage',key:'knife',equippable:true}))
+      log(`<span class='le-loot'>The host's long knife — take it.</span>`,'le-loot');
+  } else if(e.name==='Lesdy'){ // exact match — not substring
     G.flags.lesdyClear=G.enemies.every(en=>en.hp<=0);
     silver=d(6)*5;G.player.silver+=silver;
     log(`<span class='le-loot'>Lesdy had ${silver} silver hidden in her gunny sack.</span>`,'le-loot');
+    // Lesdy drops: d3 = 1 poison, 2 decoction, 3 scroll
+    const lesdyDrop=d(3);
+    if(lesdyDrop===1){
+      tryAddItem({name:'Poison Vial (Lesdy)',detail:'Throw in combat — TOU DR12 or D8 dmg',key:'poison_urn',usable:true});
+      log(`<span class='le-loot'>In the sack: a small vial of something dark.</span>`,'le-loot');
+    } else if(lesdyDrop===2){
+      const t=d(4)+4; // types 5-8
+      const names=['','','','','','Spider-Owl Soup','Fernor\'s Philtre','Enervating Snuff','Black Poison'];
+      tryAddItem({name:`Decoction: ${names[t]}`,detail:'Single use — herbmaster brew',key:`decoction_${Date.now()}_${t}`,usable:true,decoctionType:t});
+      log(`<span class='le-loot'>In the sack: a stoppered vial — ${names[t]}.</span>`,'le-loot');
+    } else {
+      tryAddItem({name:'Torn Scroll (Daemon of Capillaries)',detail:'Presence DR12 to invoke',key:'scroll_daemon_lesdy',usable:true});
+      log(`<span class='le-loot'>In the sack: half a scroll, still legible.</span>`,'le-loot');
+    }
   } else if(e.name.includes('Guard')){
     silver=roll(4,1)*2;G.player.silver+=silver;
     log(`<span class='le-loot'>+${silver}s looted.</span>`,'le-loot');
+    // d6 drop: 1-2=nothing, 3-4=weapon, 5-6=armor piece
+    const drop=d(6);
+    if(drop>=5){
+      const armorDrops=[
+        {name:"Guard's Leather Vest",detail:'Light Armor — D2 protection',key:'light_armor_guard',equippable:true,armorTier:1},
+        {name:"Guard's Chainmail Coif",detail:'Medium protection',key:'medium_coif_guard',equippable:true,armorTier:2},
+      ];
+      const a=pick(armorDrops);
+      if(tryAddItem(a)) log(`<span class='le-loot'>Body drop: ${a.name}.</span>`,'le-loot');
+    } else if(drop>=3){
+      const weaponDrops=[
+        {name:"Guard's Short Sword",detail:'D6 damage',key:'sword',equippable:true},
+        {name:"Guard's Flail",detail:'D8 damage',key:'flail',equippable:true},
+        {name:"Guard's Club",detail:'D4 damage',key:'femur',equippable:true},
+      ];
+      const w=pick(weaponDrops);
+      if(tryAddItem(w)) log(`<span class='le-loot'>Body drop: ${w.name}.</span>`,'le-loot');
+    }
   } else if(e.name.includes('Skeleton')){
     G.flags.libraryClear=true;
     if(d(6)>=5){silver=d(6)*3;G.player.silver+=silver;log(`<span class='le-loot'>Bone dust and +${silver}s in old coin.</span>`,'le-loot');}
-  } else if(e.name.includes('Host')){
-    // Check if all enemies in this combat are now dead
-    G.flags.lesdyClear=(G.enemies.every(en=>en.hp<=0));
-    if(d(6)>=4){silver=d(4)*2;G.player.silver+=silver;log(`<span class='le-loot'>+${silver}s on the body.</span>`,'le-loot');}
   } else {
     silver=roll(4,1)*2;G.player.silver+=silver;
     if(silver>0) log(`<span class='le-loot'>+${silver}s looted.</span>`,'le-loot');
@@ -1965,6 +2192,11 @@ function onEnemyDead(e){
     setTimeout(()=>renderUI(),400);
   } else {
     G.combatActive=false;G.enemies=[];G.enemyIdx=0;
+    // Post-combat rest only available in greenhouse after Lesdy/hosts defeated
+    if(G.room===11&&G.flags.lesdyClear){
+      G.flags.postCombatRestAvailable=true;
+      G.flags.postCombatRested=false;
+    }
     log('The fighting is over.','le-ok');
     setTimeout(()=>renderUI(),300);
   }
@@ -2137,7 +2369,7 @@ function getRoomActions(roomId){
     // ── ATTACK ──
     acts.push({id:'attack',label:'⚔ Attack',type:'fight',fn:combatAttack});
     const berserk=P.effects.find(e=>e.berserk);
-    if(berserk) acts.push({id:'attack2',label:'⚔ Second Attack (BERSERK)',type:'fight',fn:combatAttack});
+    // Berserk second attack is automatic — no extra button; handled inside combatAttack
 
     // ── CLASS ABILITY IN COMBAT ──
     if(P.classAbility&&P.classAbilityLabel){
@@ -2182,8 +2414,7 @@ function getRoomActions(roomId){
   // Declare BEFORE first use
   const pursuitActive=(G.flags.fletcherFought&&!G.flags.fletcherDead&&G.fletcherEnemy&&G.fletcherEnemy.hp>0)||
                       (G.flags.guardsFought&&!G.flags.guardsDead&&G.guardsEnemy&&G.guardsEnemy.some(e=>e.hp>0));
-  // ── REST ACTIONS ──
-  // CODE HERE
+  // (post-combat rest handled inside case 11 greenhouse block)
 
   // ── OMENS (outside combat: heal only) ──
   if(!G.combatActive&&P.omens>0)
@@ -2305,9 +2536,13 @@ function getRoomActions(roomId){
         });
       }
 
-      // Destrancar — se acalmado
+      // Destrancar — se acalmado (atualizar para occult herbmaster usar lockpick) #teste!!!
       if(cs==='calmed'){
+        /*
         if(isScum&&hasLockpick)
+          acts.push({id:`pick_${active}`,label:`Cell ${active}: Lockpick (AGI DR10)`,type:'spec',fn:()=>lockpickCell(active)});
+        */
+        if(hasLockpick)
           acts.push({id:`pick_${active}`,label:`Cell ${active}: Lockpick (AGI DR10)`,type:'spec',fn:()=>lockpickCell(active)});
         if(hasKey)
           acts.push({id:`key_${active}`,label:`Cell ${active}: Unlock (Guard's key)`,type:'spec',fn:()=>unlockCellKey(active)});
@@ -2376,7 +2611,7 @@ function getRoomActions(roomId){
         }
       }
       if(!F.paintingsRemoved)
-        acts.push({id:'take_paintings',label:'Remove a painting from the wall',type:'loot',fn:takePainting});
+        acts.push({id:'take_paintings',label:'Remove a painting from the wall',type:'loot',fn:()=>{takePainting();renderActions();}});
       // North passage: ALWAYS goes through the trap — no safe shortcut.
       // Knowing about the trap lets you avoid it; not knowing risks it.
       acts.push({id:'walk_north',label:F.pitTrapKnown?'Go north — edge around the trap':'Move north carefully (trap risk)',type:'mv',fn:()=>{
@@ -2539,22 +2774,30 @@ function getRoomActions(roomId){
         acts.push({id:'tunnel_blocked_note',label:'⚠ Crawlway blocked by the hosts',type:'',fn:()=>log(`The three hosts position themselves between you and the east crawlway. <em>"You haven't finished your tea,"</em> one says pleasantly, long knife in hand.`,'le-npc')});
       }
       if(F.lesdyClear){
+        // Single rest available once (post-Lesdy), then a lighter catch-breath option
         if(!G.flags['greenhouse_rested']){
-          acts.push({id:'rest_greenhouse',label:'Rest in the greenhouse (heal D6 + omens)',type:'spec',fn:()=>{
-            G.flags['greenhouse_rested']=true;
-            const h=d(6);heal(h,true);
-            P.food=Math.min(P.food+1,10);P.water=Math.min(P.water+1,8);
-            const orRegen=d(P.omenDie||2);P.omens=Math.min(P.maxOmens,P.omens+orRegen);
-            P.scrollUses=0;G.flags.powerMaxToday=null;
-            log(`You rest in the greenhouse. Dim moonlight through the glass. <span class='le-heal'>+${h} HP, +1 food, +1 water, +${orRegen} omens. Powers reset.</span>`,'le-heal');
-            renderStats();renderActions();
-          }});
+          acts.push({id:'rest_greenhouse',
+            label:'Rest in the greenhouse — full recovery',
+            type:'spec',
+            fn:()=>{
+              G.flags['greenhouse_rested']=true;
+              G.flags.postCombatRested=true;
+              G.flags.postCombatRestAvailable=false;
+              const h=d(6)+d(4);heal(h,true);
+              P.food=Math.min(P.food+1,10);P.water=Math.min(P.water+1,8);
+              const orRegen=d(P.omenDie||2);P.omens=Math.min(P.maxOmens,P.omens+orRegen);
+              P.scrollUses=0;G.flags.powerMaxToday=null;
+              P.effects=P.effects.filter(e=>e.turns===999||e.type==='infect');
+              log(`You rest among the palms. Dim moonlight through glass. <span class='le-heal'>+${h} HP, +1 food, +1 water, +${orRegen} omens. Powers reset. Debuffs cleared.</span>`,'le-heal');
+              renderStats();renderActions();
+            }
+          });
         } else {
-          acts.push({id:'rest_greenhouse_2',label:'Rest again (catch breath — D4 HP)',type:'spec',fn:()=>{
-            const h=d(4);heal(h,true);
-            log(`You rest a little longer. <span class='le-heal'>+${h} HP.</span>`,'le-heal');
-            renderStats();
-          }});
+          acts.push({id:'rest_greenhouse_2',
+            label:'Rest a little longer (D4 HP)',
+            type:'spec',
+            fn:()=>{const h=d(4);heal(h,true);log(`A little longer. <span class='le-heal'>+${h} HP.</span>`,'le-heal');renderStats();}
+          });
         }
       }
       break;
@@ -2600,8 +2843,8 @@ function getRoomActions(roomId){
       }
       if(F.fletcherDead&&!F.debrisLooted) acts.push({id:'loot_debris',label:'Search properly (silence helps)',type:'loot',fn:lootDebrisRoom});
       if(P.inventory.find(i=>i.key==='fletcher_key')) acts.push({id:'unlock_south',label:`Unlock south door (Fletcher's key)`,type:'spec',fn:()=>{G.flags.debrisSouthUnlocked=true;log('The key turns. A grinding clank.','le-ok');renderActions();}});
-      // Lockpick: south door to statue room — DR14, breaks on fail, attracts Fletcher/guards
-      if(!F.debrisSouthUnlocked&&!P.inventory.find(i=>i.key==='fletcher_key')&&P.classId==='scum'&&P.inventory.find(i=>i.key==='lockpicks'))
+      // // Lockpick: south door to statue room — DR14, breaks on fail, attracts Fletcher/guards # teste !!! &&P.classId==='scum'
+      if(!F.debrisSouthUnlocked&&!P.inventory.find(i=>i.key==='fletcher_key')&&P.inventory.find(i=>i.key==='lockpicks'))
         acts.push({id:'lockpick_debris_south',label:'Lockpick south door (AGI DR14 — risky)',type:'spec',fn:lockpickDebrisSouth});
       break;
     case 15:
@@ -3053,7 +3296,10 @@ function acceptLesdy(){
   G.player.effects=G.player.effects.filter(e=>e.stat!=='str_tou');
   heal(h);
   log(`<span class='le-heal'>+${h} HP, +1 food day.</span> Then the ground seems to sink. The walls ripple like ocean waves. The brew was drugged.`,'le-fail');
-  setTimeout(()=>{log('The hosts draw knives. <em>"Lesdy… Lusi… the chosen, the delightful!"</em> They attack. You are at −2 to everything.','le-combat');G.player.effects.push({type:'debuff',label:'Drugged: ATK/DEF−2',turns:4,val:-2,stat:'attack_def'});startCombat([makeEnemy(ENEMY_DEFS.lesdy),makeEnemy(ENEMY_DEFS.host),makeEnemy(ENEMY_DEFS.host),makeEnemy(ENEMY_DEFS.host)],4);},1000);
+  G.player.effects.push({type:'debuff',label:'Drugged: ATK/DEF−2',turns:4,val:-2,stat:'attack_def'});
+  setTimeout(()=>{log('The hosts draw knives. <em>"Lesdy… Lusi… the chosen, the delightful!"</em> They attack. You are at −2 to everything.','le-combat');
+    // Hosts fight first — Lesdy waits at the back and joins last
+    startCombat([makeEnemy(ENEMY_DEFS.host),makeEnemy(ENEMY_DEFS.host),makeEnemy(ENEMY_DEFS.host),makeEnemy(ENEMY_DEFS.lesdy)],4);},1000);
 }
 function refuseLesdy(){
   G.flags.lesdyMet=true;G.flags.lesdyFled=true;
@@ -3233,6 +3479,23 @@ function enterRoom(id){
   // ── GUTWORM PURSUIT RESET ──
   // Once the player leaves the room where Gutworm appeared, it can re-emerge elsewhere
   if(G.flags.gutwormPursuing&&!G.combatActive) G.flags.gutwormPursuing=false;
+
+  // ── SPIDER-OWL SOUP — per-room item discovery (AGI bonus helps) ──
+  if(G.player.effects.some(e=>e.spiderOwl)&&!G.combatActive){
+    const agiBonus=G.player.agi||0;
+    const threshold=Math.max(1,Math.min(5,2+agiBonus)); // higher AGI = more finds
+    if(d(6)<=threshold){
+      const darkFinds=[
+        {name:'Lockpick',detail:'AGI DR8 to open locks',key:'lockpicks',usable:true,stackable:true},
+        {name:'Wedged Coin',detail:'small silver cache',key:`found_coin_${Date.now()}`},
+        {name:'Cracked Vial (Red Poison)',detail:'Single use',key:`decoction_${Date.now()}_1`,usable:true,decoctionType:1},
+        {name:'Mouldy Ration',detail:'Risky — TOU DR8 or food poisoning',key:'mouldy_ration',usable:true},
+      ];
+      const find=pick(darkFinds);
+      if(find.key.includes('found_coin')){const s=d(4)*2;G.player.silver+=s;log(`Spider-Owl vision catches a glint — ${s}s wedged in a crack. <span class='le-loot'>Claimed.</span>`,'le-loot');renderStats();}
+      else if(tryAddItem(find)) log(`Spider-Owl darkvision: something in the shadows — <span class='le-loot'>${find.name}.</span>`,'le-loot');
+    }
+  }
 
   // ── GUARD PASS RESET ──
   // sneak/bribe only clears the way for one pass — if the player leaves and returns,
@@ -3605,7 +3868,15 @@ function renderStats(){
   const inv=document.getElementById('inv-list');inv.innerHTML='';
   inv.innerHTML+=`<li class='inv-item'><div class='inv-item-row'><span class='inv-name'>⚔ ${P.weapon.name}${P.weaponKey&&P.weaponKey.includes('crossbow')?` <span style="color:var(--text3);font-size:.75em">bolt(s): ${P.bolts||0}</span>`:''}</span><span class='inv-detail'>${P.weapon.label||''}</span></div></li>`;
   const ar=ARMORS[P.armorKey]||ARMORS.none;
-  if(P.armorTier>0) inv.innerHTML+=`<li class='inv-item'><div class='inv-item-row'><span class='inv-name'>🛡 ${ar.name} (T${P.armorTier})</span><span class='inv-detail'>${ar.label}</span></div></li>`;
+  if(P.armorTier>0){
+    const baseDef=ARMORS[P.armorKey]||null;
+    const dropDef=DROPPED_ARMORS[P.armorKey]||null;
+    const def=baseDef||dropDef;
+    const tierLabel=P.armorTier===1?'−D2':P.armorTier===2?'−D4':'−D6';
+    const arName=def?def.name:P.armorKey.replace(/_/g,' ').replace(/\b\w/g,c=>c.toUpperCase());
+    const arLabel=def?def.label:tierLabel;
+    inv.innerHTML+=`<li class='inv-item'><div class='inv-item-row'><span class='inv-name'>🛡 ${arName} (T${P.armorTier})</span><span class='inv-detail'>${arLabel}</span></div></li>`;
+  }
   for(const item of P.inventory){
     // Backpack shows slot bonus, no use/equip
     if(item.key==='backpack'){
@@ -3615,7 +3886,16 @@ function renderStats(){
     const ub=item.usable?`<button class='btn-use' onclick='useItem("${item.key}")'>Use</button>`:'';
     const eb=item.equippable?`<button class='btn-equip' onclick='equipItem("${item.key}")'>Equip</button>`:'';
     const db=`<button class='btn-drop' onclick='dropItem("${item.key}")'>Drop</button>`;
-    inv.innerHTML+=`<li class='inv-item'><div class='inv-item-row'><span class='inv-name'>${item.name}</span><span class='inv-detail'>${item.detail||''}</span></div><div class='inv-actions'>${ub}${eb}${db}</div></li>`;
+    // Decoctions: extra throw / imbue options depending on type
+    let extraBtns='';
+    if(item.key&&item.key.startsWith('decoction')){
+      const t=item.decoctionType;
+      // Throwable: Red Poison (1), Black Poison (8)
+      if(t===1||t===8) extraBtns+=`<button class='btn-throw' onclick='throwDecoction("${item.key}")'>Throw</button>`;
+      // Imbue weapon: Red Poison (1) only
+      if(t===1) extraBtns+=`<button class='btn-imbue' onclick='imbueDecoction("${item.key}")'>Imbue</button>`;
+    }
+    inv.innerHTML+=`<li class='inv-item'><div class='inv-item-row'><span class='inv-name'>${item.name}</span><span class='inv-detail'>${item.detail||''}</span></div><div class='inv-actions'>${ub}${extraBtns}${eb}${db}</div></li>`;
   }
   // Combat banner
   const banner=document.getElementById('combat-banner');
