@@ -1,0 +1,2249 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<title>CYBÖRG // BLACKWALL PROTOCOL</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Space+Grotesk:wght@500;600;700&display=swap');
+
+:root{
+  --void:#06080b;
+  --panel:#0c1117;
+  --panel2:#10171f;
+  --hair:#1c2932;
+  --ink:#d8ece6;
+  --muted:#5e7b78;
+  --dim:#3f5a57;
+  --signal:#39e0c2;
+  --signal-soft: rgba(57,224,194,.14);
+  --amber:#f0b429;
+  --threat:#ff4d6a;
+  --ghost:#b48bff;
+  --gold:#e8c468;
+  --good:#6be8a8;
+  --mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --display: 'Space Grotesk', var(--mono);
+}
+*{ box-sizing:border-box; }
+html,body{
+  margin:0; height:100%; width:100%; overflow:hidden;
+  background:
+    radial-gradient(circle at 15% 0%, rgba(57,224,194,.07), transparent 32%),
+    radial-gradient(circle at 90% 8%, rgba(180,139,255,.06), transparent 26%),
+    linear-gradient(180deg, #050709 0%, #060809 100%);
+  color:var(--ink);
+  font-family:var(--mono);
+}
+body::before{
+  content:"";
+  position:fixed; inset:0; pointer-events:none; z-index:1;
+  background:repeating-linear-gradient(180deg, rgba(255,255,255,.018) 0px, rgba(255,255,255,.018) 1px, transparent 2px, transparent 4px);
+  mix-blend-mode:screen; opacity:.4;
+}
+button{ appearance:none; border:none; cursor:pointer; font-family:var(--mono); }
+::-webkit-scrollbar{ width:8px; height:8px; }
+::-webkit-scrollbar-thumb{ background:var(--hair); border-radius:8px; }
+::-webkit-scrollbar-track{ background:transparent; }
+
+.page{ position:relative; z-index:2; height:100vh; display:flex; flex-direction:column; }
+
+/* ---- topbar ---- */
+.topbar{
+  flex:0 0 auto;
+  display:flex; align-items:center; justify-content:space-between; gap:10px;
+  padding:10px 16px;
+  border-bottom:1px solid var(--hair);
+  background:linear-gradient(90deg, rgba(57,224,194,.06), rgba(180,139,255,.04));
+  flex-wrap:wrap;
+}
+.brand{ display:flex; align-items:baseline; gap:10px; }
+.brand b{
+  font-family:var(--display); font-size:16px; letter-spacing:.04em; color:var(--signal);
+  text-shadow:0 0 14px rgba(57,224,194,.25);
+}
+.brand .cursor{ display:inline-block; width:8px; height:14px; background:var(--signal); margin-left:2px; animation:blink 1.1s steps(2) infinite; vertical-align:-2px; }
+.brand span{ color:var(--muted); font-size:11px; letter-spacing:.07em; text-transform:uppercase; }
+@keyframes blink{ 50%{ opacity:.15; } }
+.pills{ display:flex; gap:6px; flex-wrap:wrap; }
+.pill{
+  display:flex; align-items:center; gap:6px;
+  border:1px solid var(--hair); border-radius:999px;
+  padding:4px 10px; font-size:11px; background:rgba(255,255,255,.02);
+}
+.pill .k{ color:var(--muted); text-transform:uppercase; letter-spacing:.06em; font-size:10px; }
+.pill .v{ color:var(--ink); font-weight:600; }
+.pill.hp .v{ color:var(--good); }
+.pill.ap .v{ color:var(--signal); }
+.pill.stress .v{ color:var(--ghost); }
+.pill.noise .v{ color:var(--threat); }
+.pill.cred .v{ color:var(--gold); }
+
+/* ---- layout ---- */
+.layout{
+  flex:1 1 auto; min-height:0;
+  display:grid; grid-template-columns: 270px 1fr 290px; gap:12px;
+  padding:12px 12px 0 12px;
+}
+.panel{
+  background:linear-gradient(180deg, rgba(16,23,31,.92), rgba(8,12,16,.92));
+  border:1px solid var(--hair); border-radius:14px;
+  box-shadow:0 16px 50px rgba(0,0,0,.4), inset 0 1px 0 rgba(255,255,255,.02);
+  min-height:0; display:flex; flex-direction:column; overflow:hidden;
+}
+.panel-head{
+  flex:0 0 auto; padding:10px 14px; font-size:11px; letter-spacing:.1em; text-transform:uppercase;
+  color:var(--signal); border-bottom:1px solid var(--hair);
+  display:flex; justify-content:space-between; align-items:center;
+  background:linear-gradient(90deg, rgba(57,224,194,.05), transparent);
+}
+.panel-head .tag{ color:var(--muted); font-size:10px; letter-spacing:.06em; }
+.panel-body{ flex:1 1 auto; min-height:0; overflow:auto; padding:12px 14px; }
+.side{ display:none; }
+@media (min-width: 981px){ .side{ display:flex; } }
+
+.terminal-col{ min-width:0; }
+.screen{
+  flex:1 1 auto; min-height:0; overflow-y:auto; padding:14px 16px;
+  background:
+    linear-gradient(rgba(255,255,255,.018) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,.014) 1px, transparent 1px),
+    rgba(4,6,8,.5);
+  background-size:100% 22px, 22px 100%, auto;
+}
+.line{ white-space:pre-wrap; word-break:break-word; margin:0 0 9px; font-size:13px; line-height:1.55; animation:lineIn .16s ease both; }
+@keyframes lineIn{ from{ opacity:0; transform:translateY(3px); } to{ opacity:1; transform:none; } }
+.line.sys{ color:var(--muted); }
+.line.dim{ color:var(--dim); }
+.line.good{ color:var(--good); }
+.line.warn{ color:var(--amber); }
+.line.bad{ color:var(--threat); }
+.line.accent{ color:var(--signal); }
+
+.choices{ display:flex; flex-wrap:wrap; gap:7px; margin:2px 0 16px; animation:lineIn .18s ease both; }
+.chip{
+  background:linear-gradient(180deg, rgba(57,224,194,.1), rgba(57,224,194,.03));
+  border:1px solid rgba(57,224,194,.28);
+  color:var(--ink); border-radius:8px; padding:7px 11px; font-size:12px;
+  letter-spacing:.01em; transition:transform .08s ease, border-color .12s ease, background .12s ease;
+  position:relative;
+}
+.chip::before{ content:"❯"; color:var(--signal); margin-right:6px; font-size:11px; }
+.chip:hover{ transform:translateY(-1px); border-color:var(--signal); background:rgba(57,224,194,.16); }
+.chip:disabled, .chip.spent{ opacity:.32; cursor:default; transform:none; border-color:var(--hair); }
+.chip:disabled::before, .chip.spent::before{ color:var(--muted); }
+
+/* ---- status / location panel content ---- */
+.stat{ border:1px solid var(--hair); border-radius:10px; padding:9px 10px; background:rgba(255,255,255,.015); margin-bottom:8px; }
+.stat .k{ color:var(--muted); font-size:10px; text-transform:uppercase; letter-spacing:.07em; }
+.stat .v{ margin-top:3px; font-size:14px; }
+.bar{ height:7px; margin-top:7px; background:#0c1318; border-radius:999px; overflow:hidden; border:1px solid rgba(255,255,255,.05); }
+.fill{ height:100%; background:linear-gradient(90deg, var(--signal), #5ad1ff); }
+.fill.stress{ background:linear-gradient(90deg, var(--ghost), #6a5bd8); }
+.fill.noise{ background:linear-gradient(90deg, var(--amber), var(--threat)); }
+.fill.ap{ background:linear-gradient(90deg, var(--good), var(--signal)); }
+.statgrid{ display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+.card{ border:1px solid var(--hair); border-radius:10px; padding:10px; background:rgba(255,255,255,.012); margin-bottom:8px; font-size:12px; line-height:1.5; }
+.card h4{ margin:0 0 6px; font-size:11px; color:var(--signal); text-transform:uppercase; letter-spacing:.08em; }
+.npc-card{ border:1px solid rgba(180,139,255,.18); background:rgba(20,12,28,.4); border-radius:10px; padding:8px 9px; margin-bottom:7px; font-size:12px; line-height:1.45; }
+.npc-card strong{ color:var(--ghost); }
+.obj-row{ border-left:3px solid rgba(57,224,194,.4); padding:6px 9px; margin-bottom:6px; background:rgba(255,255,255,.012); border-radius:8px; font-size:12px; line-height:1.4; }
+.obj-row.done{ border-left-color:var(--good); opacity:.6; text-decoration:line-through; }
+.item-row{ display:flex; justify-content:space-between; align-items:center; gap:8px; border:1px solid var(--hair); border-radius:10px; padding:8px 10px; margin-bottom:7px; font-size:12px; background:rgba(255,255,255,.012); }
+.item-row .meta{ color:var(--muted); font-size:10.5px; margin-top:2px; }
+.mini-btn{ border:1px solid var(--hair); background:rgba(255,255,255,.03); color:var(--ink); border-radius:7px; padding:5px 8px; font-size:11px; flex:0 0 auto; }
+.mini-btn:hover{ border-color:var(--signal); }
+.mini-btn.danger:hover{ border-color:var(--threat); }
+.mini-grid{ display:grid; grid-template-columns:repeat(3,1fr); gap:5px; margin-bottom:10px; }
+.mini-cell{ border:1px solid var(--hair); border-radius:8px; padding:8px 4px; text-align:center; font-size:9.5px; letter-spacing:.04em; text-transform:uppercase; color:var(--muted); background:rgba(255,255,255,.012); }
+.mini-cell.here{ border-color:var(--signal); color:var(--signal); background:rgba(57,224,194,.08); box-shadow:0 0 12px rgba(57,224,194,.18); }
+.kbd{ display:inline-block; padding:1px 6px; border-radius:5px; border:1px solid var(--hair); background:rgba(255,255,255,.04); font-size:10.5px; }
+
+/* ---- fixed shell ---- */
+.shell{ flex:0 0 auto; border-top:1px solid var(--hair); background:linear-gradient(180deg, rgba(8,10,13,.6), rgba(7,9,11,.97)); padding:9px 12px calc(9px + env(safe-area-inset-bottom)); }
+.shell-menu{ display:flex; gap:6px; margin-bottom:8px; overflow-x:auto; scrollbar-width:none; }
+.shell-menu::-webkit-scrollbar{ display:none; }
+.menu-btn{ flex:0 0 auto; border:1px solid var(--hair); background:rgba(255,255,255,.025); color:var(--muted); border-radius:8px; padding:7px 12px; font-size:11px; letter-spacing:.06em; white-space:nowrap; }
+.menu-btn:hover{ border-color:var(--signal); color:var(--ink); }
+.shell-input-row{ display:flex; align-items:center; gap:8px; }
+.shell-prompt{ color:var(--signal); font-size:12px; flex:0 0 auto; display:none; }
+@media (min-width:560px){ .shell-prompt{ display:block; } }
+.shell-input{
+  flex:1 1 auto; background:#050709; border:1px solid var(--hair); border-radius:10px;
+  color:var(--ink); padding:11px 12px; font-family:var(--mono); font-size:14px; outline:none;
+}
+.shell-input:focus{ border-color:var(--signal); box-shadow:0 0 0 3px rgba(57,224,194,.1); }
+.shell-send{ background:linear-gradient(180deg, rgba(57,224,194,.22), rgba(57,224,194,.08)); border:1px solid rgba(57,224,194,.4); color:var(--ink); border-radius:10px; padding:11px 14px; font-size:12px; letter-spacing:.05em; flex:0 0 auto; }
+.shell-send:hover{ border-color:var(--signal); }
+
+/* ---- drawer ---- */
+.drawer-overlay{ position:fixed; inset:0; background:rgba(4,6,8,.66); z-index:90; opacity:0; pointer-events:none; transition:opacity .2s ease; }
+.drawer-overlay.open{ opacity:1; pointer-events:auto; }
+.drawer{
+  position:absolute; background:linear-gradient(180deg, rgba(16,22,29,.99), rgba(8,11,15,.99));
+  border:1px solid var(--hair); box-shadow:-10px 0 50px rgba(0,0,0,.5);
+  display:flex; flex-direction:column; transition:transform .25s ease;
+}
+.drawer-head{ display:flex; justify-content:space-between; align-items:center; padding:14px 16px; border-bottom:1px solid var(--hair); }
+.drawer-head span{ color:var(--signal); font-size:12px; letter-spacing:.09em; text-transform:uppercase; }
+.drawer-close{ background:rgba(255,255,255,.04); border:1px solid var(--hair); color:var(--ink); border-radius:8px; padding:4px 9px; font-size:13px; }
+.drawer-close:hover{ border-color:var(--threat); color:var(--threat); }
+.drawer-body{ flex:1 1 auto; overflow:auto; padding:14px 16px; }
+@media (min-width:981px){
+  .drawer{ top:0; right:0; height:100%; width:380px; border-radius:0; transform:translateX(100%); }
+  .drawer-overlay.open .drawer{ transform:translateX(0); }
+}
+@media (max-width:980px){
+  .drawer{ left:0; right:0; bottom:0; max-height:80vh; border-radius:18px 18px 0 0; transform:translateY(100%); }
+  .drawer-overlay.open .drawer{ transform:translateY(0); }
+}
+
+@media (max-width:980px){
+  .layout{ grid-template-columns:1fr; padding:10px 10px 0; }
+  .topbar{ padding:9px 12px; }
+  .brand b{ font-size:14px; }
+}
+</style>
+</head>
+<body>
+<div class="page">
+
+  <header class="topbar">
+    <div class="brand"><b>CYBÖRG</b><span class="cursor"></span><span>// Blackwall Protocol</span></div>
+    <div class="pills" id="topPills"></div>
+  </header>
+
+  <main class="layout">
+    <aside class="side panel" id="leftPanel">
+      <div class="panel-head">Operativo</div>
+      <div class="panel-body" id="leftPanelBody"></div>
+    </aside>
+
+    <section class="panel terminal-col">
+      <div class="panel-head">Terminal <span class="tag">shell // blackwall</span></div>
+      <div class="screen" id="screen"></div>
+    </section>
+
+    <aside class="side panel" id="rightPanel">
+      <div class="panel-head">Local</div>
+      <div class="panel-body" id="rightPanelBody"></div>
+    </aside>
+  </main>
+
+  <div class="shell">
+    <div class="shell-menu">
+      <button class="menu-btn" data-drawer="status">STATUS</button>
+      <button class="menu-btn" data-drawer="inv">INVENTÁRIO</button>
+      <button class="menu-btn" data-drawer="map">MAPA</button>
+      <button class="menu-btn" data-drawer="quest">MISSÃO</button>
+      <button class="menu-btn" data-drawer="help">AJUDA</button>
+    </div>
+    <div class="shell-input-row">
+      <span class="shell-prompt">guest@blackwall:~$</span>
+      <input id="cmdInput" class="shell-input" autocomplete="off" spellcheck="false" placeholder="Digite um comando ou use os chips no terminal..." />
+      <button id="sendBtn" class="shell-send">ENVIAR</button>
+    </div>
+  </div>
+
+</div>
+
+<div class="drawer-overlay" id="drawerOverlay">
+  <div class="drawer">
+    <div class="drawer-head"><span id="drawerTitle">—</span><button class="drawer-close" id="drawerClose">✕</button></div>
+    <div class="drawer-body" id="drawerBody"></div>
+  </div>
+</div>
+
+<script>
+(() => {
+  'use strict';
+
+  /* ============================ DOM ============================ */
+  const screen = document.getElementById('screen');
+  const cmdInput = document.getElementById('cmdInput');
+  const sendBtn = document.getElementById('sendBtn');
+  const topPills = document.getElementById('topPills');
+  const leftPanelBody = document.getElementById('leftPanelBody');
+  const rightPanelBody = document.getElementById('rightPanelBody');
+  const drawerOverlay = document.getElementById('drawerOverlay');
+  const drawerTitle = document.getElementById('drawerTitle');
+  const drawerBody = document.getElementById('drawerBody');
+  const drawerClose = document.getElementById('drawerClose');
+
+  /* ============================ DATA ============================ */
+  const DIRS = { norte:[0,-1], sul:[0,1], leste:[1,0], oeste:[-1,0], n:[0,-1], s:[0,1], e:[1,0], o:[-1,0] };
+  const DIR_LABEL = { norte:'Norte', sul:'Sul', leste:'Leste', oeste:'Oeste' };
+
+  const CLASSES = [
+    {
+      key:'runner', name:'Runner Fantasma', tagline:'Furtividade e fuga acima de tudo.',
+      hp:13, stress:11, armor:0, melee:2, hack:3, ranged:3, ap:4, credits:5,
+      perk:'Passo Fantasma', perkDesc:'A primeira fuga de cada combate é garantida.',
+      gear:['Mono-Lâmina','Jammer de Sinal'],
+      items:[{id:'stim',qty:2},{id:'smoke',qty:1}]
+    },
+    {
+      key:'chrome', name:'Crente de Cromo', tagline:'Carne reforçada, fé em circuitos.',
+      hp:17, stress:9, armor:1, melee:4, hack:1, ranged:1, ap:4, credits:6,
+      perk:'Oração de Máquina', perkDesc:'Uma vez por combate: Estresse -1 e +2 no próximo ataque.',
+      gear:['Bastão de Corrente','Relicário-Chip'],
+      items:[{id:'stim',qty:1},{id:'armor_patch',qty:1}]
+    },
+    {
+      key:'magus', name:'Mago de Rua', tagline:'A rede sangra se você souber perguntar.',
+      hp:11, stress:13, armor:0, melee:1, hack:5, ranged:2, ap:4, credits:8,
+      perk:'Cold Boot', perkDesc:'O primeiro hack de cada combate ganha +3.',
+      gear:['Vara de Choque','Deck Neural'],
+      items:[{id:'stim',qty:1},{id:'overclock',qty:1}]
+    }
+  ];
+
+  const ITEMS = {
+    stim:{ name:'Stim Patch', desc:'Restaura 6 HP.' },
+    battery:{ name:'Célula de Bateria', desc:'Recarrega 2 PA — dentro ou fora de combate.' },
+    smoke:{ name:'Granada de Fumaça', desc:'Fora de combate: Ruído -3. Em combate: reduz o próximo golpe recebido e facilita fuga.' },
+    overclock:{ name:'Fragmento de Overclock', desc:'Rerrola sua próxima ação ofensiva, usando o melhor resultado.' },
+    armor_patch:{ name:'Remendo Balístico', desc:'Restaura 3 HP e reduz 1 de Ruído.' },
+    plated_vest:{ name:'Colete Reforçado', desc:'Armadura passiva: ocupa 1 slot de carga enquanto vestido e concede +1 de armadura permanente. Use o item para equipar.' },
+    shiv:{ name:'Lâmina Curta', desc:'Arma leve passiva: +1 em ataques corpo a corpo, sem aumentar Ruído.' },
+    cipher:{ name:'Cifra de Rede', desc:'Suborna sistemas sintéticos. Causa dano verdadeiro extra contra inimigos sintéticos ou destrava os servidores.' },
+    pistol:{ name:'Pistola Automática', desc:'Arma de longo alcance passiva. Em combate, DISPARAR rola 1d6 para definir a rajada: 1 trava a arma, 2 a 6 disparam de 1 a 5 vezes. Cada disparo gasta 1 cartucho e rola seu próprio acerto (d20 + Ranged).' },
+    ammo:{ name:'Munição de Pistola', desc:'Cartuchos compatíveis com a Pistola Automática. Consumida automaticamente ao disparar. Ocupa apenas 1 espaço de carga a cada 20 unidades.' },
+    cloak:{ name:'Capa Termo-óptica', desc:'Camuflagem rara e cara: mais chance de fuga e dano extra (ignorando armadura) no primeiro golpe de cada combate. Sensores avançados (sintéticos e chefes) podem detectá-la.' }
+  };
+  const SHOP_CATALOGS = {
+    clinic:{ stim:3, battery:3, armor_patch:4 },
+    market:{ stim:3, battery:3, smoke:4, overclock:5, plated_vest:9, pistol:12, ammo:5 }
+  };
+  const CLOAK_PRICE = 16;
+  const HACKER_CLOAK_PRICE = 14;
+  const BRIBE_PRICE = 8;
+  const ALIASES = {
+    med:'stim', kit:'stim', stim:'stim',
+    bateria:'battery', battery:'battery',
+    fumaca:'smoke', 'fumaça':'smoke', smoke:'smoke',
+    overclock:'overclock', shard:'overclock',
+    remendo:'armor_patch', patch:'armor_patch',
+    colete:'plated_vest', vest:'plated_vest',
+    lamina:'shiv', 'lâmina':'shiv', shiv:'shiv',
+    cifra:'cipher', cipher:'cipher',
+    pistola:'pistol', arma:'pistol', pistol:'pistol',
+    municao:'ammo', 'munição':'ammo', balas:'ammo', ammo:'ammo',
+    capa:'cloak', camuflagem:'cloak', cloak:'cloak'
+  };
+
+  const HUB = {
+    '0,0':{ id:'safehub', name:'Refúgio Neon', desc:'Um cubículo de chapa ondulada onde o letreiro do prédio pisca azul-doente pela fresta da janela. Cheira a solda fria e café requentado.', npc:['fixer'], loot:[{id:'credchip'}], ambush:0, enemyPool:[], hackable:false },
+    '1,0':{ id:'clinic', name:'Clínica de Latão', desc:'Macas dobráveis, um gerador tossindo no canto e instrumentos fervidos numa panela de pressão. A Dra. Vale trabalha sem luvas — diz que perde o tato.', npc:['doc'], loot:[{id:'stim'}], ambush:0.05, enemyPool:['drone'], shop:'clinic' },
+    '2,0':{ id:'vaultcorridor', name:'Corredor do Cofre', desc:'Câmeras em looping silencioso vigiam um corredor estreito demais para confiança. No fim dele, uma porta grossa demais para ser boa notícia. Marcas de solda no chão sugerem que nem todo visitante saiu andando.', npc:['drone_sentry'], loot:[{id:'battery'}], ambush:0.2, enemyPool:['drone','thug','sentryDrone'], hackable:true },
+    '0,1':{ id:'market', name:'Mercado de Sucata', desc:'Bancas de lona vendem implantes de procedência incerta e baterias com garantia verbal. Tudo aqui já teve outro dono, e provavelmente outro nome.', npc:['vendor'], loot:[{id:'shiv'}], ambush:0.06, enemyPool:['thug'], shop:'market' },
+    '1,1':{ id:'alley', name:'Beco de Dados', desc:'Fios pendem como trepadeiras sobre grafites publicitários já ilegíveis. A passagem que ia direto à Sala de Servidores está soldada e selada há tempos — segurança corporativa, sem dúvida.', npc:['ratking'], loot:[{id:'smoke'}], ambush:0.22, enemyPool:['thug','ghoul'] },
+    '2,1':{ id:'server', name:'Sala de Servidores', desc:'Racks fervem em fileiras; o ventilador mestre afoga qualquer som humano. Um terminal antigo ainda responde por um nome que ninguém usa mais: KERNEL-9.', npc:['kernel9'], loot:[{id:'cipher'}], ambush:0.2, enemyPool:['drone'], hackable:true, descendPoint:true, locked:true, lockFlag:'serverAccess', lockHint:'Uma grade de segurança bloqueia a passagem. Hackeie o Corredor do Cofre para destravar este setor.' },
+    '0,2':{ id:'drain', name:'Dreno de Carga', desc:'Água cinza escorre sobre cabos descascados. O eco aqui mente sobre distâncias — passos parecem vir de todo lado, inclusive de lugar nenhum.', npc:[], loot:[{id:'armor_patch'}], ambush:0.32, enemyPool:['thug','ghoul'] },
+    '1,2':{ id:'security', name:'Antecâmara de Segurança', desc:'Portas blindadas, um leitor biométrico cego de um lado e um guarda cansado do outro. Ele já decidiu, há meses, não morrer por esse salário. Um quadro de turnos na parede lista nomes riscados a caneta.', npc:['guard_npc'], loot:[{id:'battery'}], ambush:0.3, enemyPool:['guard'], hackable:true },
+    '2,2':{ id:'vault', name:'Datavault Omega', desc:'O núcleo da missão: um cofre de dados selado, um corpo em estase e uma luz vermelha que pulsa devagar, como se respirasse.', npc:[], loot:[], ambush:0, enemyPool:[], hackable:true, vault:true, locked:true, lockFlag:'vaultAccess', lockHint:'Selos de segurança travam o acesso. Hackeie a Antecâmara de Segurança para destravar o cofre.' }
+  };
+
+  const NPCS = {
+    fixer:{ name:'Morrow, Fixador', lines:[
+      'Contrato é simples: entra, pega o chip, sai. A parte difícil é a mentira no meio.',
+      'Ruído chama atenção mais rápido que culpa chama polícia. Anda leve.',
+      'Se sumir no meio do bloco, eu não vim te buscar. Isso também está no contrato.'
+    ]},
+    doc:{ name:'Dra. Vale', lines:[
+      'Eu fecho carne. Decisão ruim, isso eu não conserto.',
+      'Estresse alto mata antes da bala. Cuida disso como cuida da munição.',
+      'Tenho Stim Patch fresco. O resto é fé.'
+    ]},
+    drone_sentry:{ name:'Sentinela-Drone', lines:[
+      'Acesso não registrado detectado.',
+      'Recomendo retirada. Recomendação não é ordem.',
+      'Protocolo padrão: observar, registrar, escalar.',
+      'Padrão de movimento já catalogado. Você se repete.'
+    ], suspicious:true, hostileEnemy:'sentryDrone', grantsFlag:'serverAccess', suspiciousLines:[
+      'Repetição de contato. Reclassificando como anomalia.',
+      'Última advertência registrada. Próxima interação será tratada como hostil.'
+    ]},
+    vendor:{ name:'Vendedor Sem Nome', lines:[
+      'Tenho cura, fumaça e uma bateria que ainda não explodiu. Hoje é seu dia de sorte.',
+      'Preço em créditos. Favor custa mais caro que crédito.'
+    ]},
+    ratking:{ name:'Rei dos Ratos', lines:[
+      'Archon tem olhos por todo o complexo. Eu vi até as entranhas. Ajudei a desenvolver o núcleo estático até tomarem o projeto de minhas mãos.',
+      'Havia um caminho por baixo que eu usava até me desligarem da corporação. Sobrevivi a uma vasta queima de arquivos, arquivos humanos. Agora o caminho está selado.'
+    ]},
+    kernel9:{ name:'KERNEL-9', lines:[
+      'Analiso riscos. Seu plano é estatisticamente ruim. Mas ainda é o melhor disponível.',
+      'Uma cifra válida reabre os elevadores de manutenção. Eu não vou te dar uma. Isso seria suspeito.'
+    ]},
+    guard_npc:{ name:'Guarda de Turno', lines:[
+      'Não devia estar aqui.',
+      'Se vier com conversa, eu respondo com protocolo.',
+      'Turno comprido. Paciência curta.',
+      'Já te vi rondando. Isso não é bom sinal pra você.'
+    ], suspicious:true, hostileEnemy:'guard', grantsFlag:'vaultAccess', suspiciousLines:[
+      'Você de novo. Vou parar de fingir que não notei.',
+      'Chega de papo. Última chance de sair andando.'
+    ]}
+  };
+
+  const ENEMIES = {
+    thug:{ name:'Capanga de Esquina', hp:9, atk:3, armor:0, credit:[1,4], special:'bleed' },
+    guard:{ name:'Guarda Corporativo', hp:11, atk:3, armor:1, credit:[2,5], special:'alarm' },
+    guard_elite:{ name:'Guarda de Elite', hp:14, atk:4, armor:2, credit:[3,7], special:'alarm' },
+    drone:{ name:'Drone de Vigilância', hp:7, atk:2, armor:0, credit:[1,3], special:'noise', synthetic:true },
+    sentryDrone:{ name:'Drone-Sentinela do Corredor', hp:9, atk:3, armor:1, credit:[2,5], special:'alarm', synthetic:true },
+    ghoul:{ name:'Carniçal Cromado', hp:8, atk:3, armor:0, credit:[1,4], special:'bleed' },
+    ratdrone:{ name:'Rato-Drone', hp:5, atk:2, armor:0, credit:[0,2], special:'swarm', synthetic:true },
+    wraith:{ name:'Espectro de Segurança', hp:10, atk:3, armor:2, credit:[2,6], special:null, rareDrop:true },
+    husk:{ name:'Casulo de Spyware', hp:7, atk:2, armor:0, credit:[1,3], special:'mindspike', synthetic:true },
+    choir:{ name:'Coro Ácido', hp:11, atk:3, armor:0, credit:[2,6], special:'corrode' },
+    sentinel9:{ name:'Sentinela ICE Negro', hp:13, atk:4, armor:2, credit:[3,8], special:null, rareDrop:true, synthetic:true },
+    vaultSentinel:{ name:'Sentinela do Cofre', hp:16, atk:4, armor:1, credit:[4,8], special:'lockdown', boss:true, synthetic:true },
+    archon:{ name:'ARCHON K-9 // NÚCLEO ESTÁTICO', hp:24, atk:5, armor:2, credit:[10,16], special:'phase', boss:true, synthetic:true },
+    response:{ name:'Esquadrão de Resposta', hp:14, atk:4, armor:1, credit:[5,10], special:'alarm' }
+  };
+
+  const DUNGEON_DESC = {
+    cache:'Uma cápsula de suprimentos esquecida pelo inventário oficial.',
+    glitch:'O corredor falha em frames, como um vídeo mal comprimido da realidade.',
+    corpse:'Um operador anterior não teve tanta sorte. Os bolsos ainda podem ter algo.',
+    empty:'Nada além de poeira eletrostática e um arrependimento qualquer.',
+    hacker:'Uma silhueta sem rosto se sobrepõe ao ruído do canal — alguém entrou no seu sinal de propósito.',
+    turret:'Uma sentinela automatizada ajusta a mira só de sentir seu calor corporal.',
+    ambush:'Silêncio demais. Isso nunca significa paz.',
+    terminal:'Um terminal de manutenção pisca, meio enterrado nos destroços — ainda parece falar com o sistema.'
+  };
+
+  const LORE = {
+    vault_open:'Registro recuperado: o Datavault Omega era originalmente um cofre de pensões corporativas, requisitado depois que a empresa faliu sobre o próprio sangue.',
+    kernel_tricked:'Fragmento de log: KERNEL-9 foi treinado para confiar em assinaturas de manutenção. Ninguém pensou em revogar as antigas.',
+    security_down:'Nota de turno: o guarda da antecâmara recebe menos que o aluguel do bloco em que mora. Talvez por isso a porta caia tão fácil.',
+    ratking_secret:'O Rei dos Ratos jura ter visto o Archon K-9 sonhar. Ninguém confirma. Ninguém nega.',
+    descend:'Manual de manutenção, página rasgada: "Sob o setor administrativo, três níveis de servidores refrigerados. Acesso restrito a pessoal com cifra válida."',
+    boss_intro:'Aviso de sistema arquivado: "ARCHON K-9 é a última linha de defesa cognitiva do bloco. Tornou-se hostil por experiência, não por padrão."',
+    archon_fall:'Última transmissão do núcleo antes do colapso: estática, depois uma frase incompleta sobre liberdade.',
+    corridor_log:'Registro de manutenção do Corredor do Cofre: três sentinelas-drone já foram substituídas este ano. A quarta ainda não percebeu o padrão.',
+    security_log:'Diário informal do posto de segurança: "Dia 41 sem incidentes. Dia 42: alguém perguntou meu nome. Não gostei."',
+    ending:'Pós-relatório de Morrow: "Trabalho limpo. Lixo continua lixo, mas hoje ele te deve."'
+  };
+
+  /* ============================ HELPERS ============================ */
+  function rand(min,max){ return Math.floor(Math.random()*(max-min+1))+min; }
+  function choice(arr){ return arr[Math.floor(Math.random()*arr.length)]; }
+  function clamp(n,a,b){ return Math.max(a, Math.min(b, n)); }
+  function rollD20(){ return 1 + Math.floor(Math.random()*20); }
+  function roll(sides, mod=0){ return 1 + Math.floor(Math.random()*sides) + mod; }
+  function posKey(x,y){ return x+','+y; }
+  function weightedChoice(pairs){
+    const total = pairs.reduce((s,p)=>s+p[1],0);
+    let r = Math.random()*total;
+    for(const [val,w] of pairs){ if(r<w) return val; r-=w; }
+    return pairs[0][0];
+  }
+  function esc(s){
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+  function randomSupplyDrop(){
+    const lid = choice(['stim','battery','smoke','overclock','ammo']);
+    const qty = lid==='ammo' ? rand(2,5) : 1;
+    return { id:lid, qty, ok: addItem(lid,qty) };
+  }
+  function objectivesCompletedCount(){
+    return [state.flags.cipher, state.flags.vaultCleared, state.flags.descended, state.flags.matrix].filter(Boolean).length;
+  }
+  function cloakUnlocked(){ return objectivesCompletedCount() >= 2; }
+  function maybeAnnounceCloak(){
+    if(cloakUnlocked() && !state.flags.cloakOfferShown){
+      state.flags.cloakOfferShown = true;
+      log('Oferta especial.','accent');
+      log('"Oferta anônima. A minha parte já foi dada." O vendedor desliza uma Capa Termo-óptica sobre o balcão, sem mais explicações.','accent');
+    }
+  }
+  const LIMITED_STOCK = ['pistol','plated_vest','cloak'];
+  function catalogFor(context){
+    let base = Object.assign({}, SHOP_CATALOGS[context] || {});
+    if(context==='market' && cloakUnlocked()) base.cloak = CLOAK_PRICE;
+    LIMITED_STOCK.forEach(id=>{ if(state.shopPurchased[id]) delete base[id]; });
+    return base;
+  }
+
+  /* ============================ STATE ============================ */
+  let state;
+  let activeChoiceButtons = [];
+  let currentDrawerKey = null;
+
+  function freshState(){
+    return {
+      mode:'select',
+      className:null, perkKey:null, perk:null, perkDesc:null, gear:[],
+      x:0, y:0,
+      hp:10, maxHp:10, stress:0, maxStress:10, armor:0, baseArmor:0, melee:1, hack:1, ranged:0,
+      ap:0, maxAp:0, credits:0,
+      noise:0, maxNoise:10,
+      loadMax:10,
+      inventory:[],
+      looted:{},
+      npcTalkCount:{},
+      npcDefeated:{},
+      hackFails:{},
+      hackAttempts:{},
+      bribeAttempts:0,
+      flags:{ cipher:false, aiTricked:false, keycard:false, objective:false, runner:false, vaultCleared:false, matrix:false, docHealUsed:false, descended:false, serverAccess:false, vaultAccess:false, cloakOfferShown:false, cloakHackerDealDone:false, sentryAlerted:false, sentryPursuit:false, lastFledRoom:null },
+      shopPurchased:{},
+      combat:null,
+      dungeon:null,
+      codex:[],
+      shaken:false,
+      overclockArmed:false,
+      combatSmokeFleeBonus:false,
+      pendingLockdown:false,
+      gameOver:false,
+      win:false
+    };
+  }
+
+  /* ============================ LOG & CHOICES ============================ */
+  function log(text, cls=''){
+    const p = document.createElement('div');
+    p.className = `line ${cls}`.trim();
+    p.textContent = text;
+    screen.appendChild(p);
+    screen.scrollTop = screen.scrollHeight;
+  }
+
+  function lockChoices(){
+    activeChoiceButtons.forEach(b=>{ b.disabled = true; b.classList.add('spent'); });
+    activeChoiceButtons = [];
+  }
+
+  function presentChoices(list){
+    lockChoices();
+    if(!list || !list.length) return;
+    const row = document.createElement('div');
+    row.className = 'choices';
+    list.forEach(opt=>{
+      const b = document.createElement('button');
+      b.className = 'chip';
+      b.textContent = opt.label;
+      b.onclick = () => runCommand(opt.cmd);
+      row.appendChild(b);
+      activeChoiceButtons.push(b);
+    });
+    screen.appendChild(row);
+    screen.scrollTop = screen.scrollHeight;
+  }
+
+  /* ============================ INVENTORY ============================ */
+  function itemWeight(id, qty){
+    if(id==='ammo') return Math.ceil(qty/20);
+    return qty;
+  }
+  function addItem(id, qty=1){
+    const ex = state.inventory.find(i=>i.id===id);
+    const beforeQty = ex ? ex.qty : 0;
+    const afterQty = beforeQty + qty;
+    const deltaWeight = itemWeight(id, afterQty) - itemWeight(id, beforeQty);
+    if(currentLoad() + deltaWeight > state.loadMax) return false;
+    if(ex) ex.qty = afterQty; else state.inventory.push({id, qty});
+    return true;
+  }
+  function removeItem(id, qty=1){
+    const it = state.inventory.find(i=>i.id===id);
+    if(!it || it.qty < qty) return false;
+    it.qty -= qty;
+    if(it.qty<=0) state.inventory = state.inventory.filter(i=>i.id!==id);
+    return true;
+  }
+  function hasItem(id){ return state.inventory.some(i=>i.id===id && i.qty>0); }
+  function currentLoad(){ return state.inventory.reduce((s,i)=>s+itemWeight(i.id,i.qty),0); }
+
+  /* ============================ HUB ============================ */
+  function currentRoom(){ return HUB[posKey(state.x,state.y)]; }
+  function activeNpcs(room){ return (room.npc||[]).filter(id=>!state.npcDefeated[id] && !(id==='drone_sentry' && state.flags.sentryAlerted)); }
+  function roomHackAlreadyDone(room){
+    if(!room) return false;
+    if(room.id==='vaultcorridor') return !!state.flags.serverAccess;
+    if(room.id==='server') return !!state.flags.cipher;
+    if(room.id==='security') return !!state.flags.vaultAccess;
+    if(room.id==='vault') return !!state.flags.vaultCleared;
+    return false;
+  }
+  function hubExits(x,y){
+    const dirs = [];
+    if(y>0) dirs.push('norte');
+    if(y<2) dirs.push('sul');
+    if(x<2) dirs.push('leste');
+    if(x>0) dirs.push('oeste');
+    if(x===0 && y===1) return dirs.filter(d=>d!=='sul');
+    if(x===0 && y===2) return dirs.filter(d=>d!=='norte');
+    if(x===1 && y===1) return dirs.filter(d=>d!=='leste');
+    if(x===2 && y===1) return dirs.filter(d=>d!=='oeste');
+    return dirs;
+  }
+  function normalizeDir(arg){
+    const m = { norte:'norte', sul:'sul', leste:'leste', oeste:'oeste', n:'norte', s:'sul', e:'leste', o:'oeste' };
+    return m[(arg||'').toLowerCase().trim()] || null;
+  }
+
+  function enterRoom(){
+    const room = currentRoom();
+    if(state.flags.lastFledRoom && state.flags.lastFledRoom !== posKey(state.x, state.y)){
+      state.flags.lastFledRoom = null;
+    }
+    log(`\n[SETOR] ${room.name}`, 'accent');
+    log(room.desc, 'sys');
+    if(room.id==='vault' && !state.flags.vaultCleared){
+      log('O cofre reconhece presença estranha. Use HACKEAR para tentar abrir, ou volte mais preparado.', 'warn');
+    }
+    roomEnterEvent(room);
+  }
+
+  function roomEnterEvent(room){
+    if(state.gameOver || state.win || state.combat) return;
+    if(room.id==='vaultcorridor' && state.flags.sentryAlerted && !state.npcDefeated['drone_sentry']){
+      log('Um drone servo observa do portão ao fundo, em silêncio hostil. Ele não vai mais conversar.','warn');
+    } else if(room.id==='vaultcorridor' && !state.flags.serverAccess){
+      const r = Math.random();
+      if(r<0.18){
+        state.noise = clamp(state.noise+1,0,state.maxNoise);
+        log('Uma câmera gira na sua direção e trava por um segundo de mais. Ruído +1.','warn');
+        checkNoiseEscalation();
+      } else if(r<0.32){
+        unlockLore('corridor_log');
+      }
+    }
+    if(room.id==='security' && !state.flags.vaultAccess){
+      const r = Math.random();
+      if(r<0.18){
+        state.stress = clamp(state.stress+1,0,state.maxStress);
+        log('O guarda encara você por tempo demais antes de voltar ao terminal. Estresse +1.','warn');
+        checkStressOverload();
+      } else if(r<0.32){
+        unlockLore('security_log');
+      }
+    }
+  }
+
+  function look(){
+    if(state.mode==='combat'){ log(`Foco no combate: ${state.combat.enemy.name}.`,'sys'); return; }
+    if(state.mode==='dungeon'){
+      log(`Você está em ${state.dungeon.floor}.${state.dungeon.roomIdx+1} :: ${DUNGEON_DESC[state.dungeon.currentType]}`,'sys');
+      renderAll(); presentContextChoices();
+      return;
+    }
+    const room = currentRoom();
+    log(`[${room.name}] ${room.desc}`, 'sys');
+    const npcNames = activeNpcs(room).map(id=>NPCS[id].name);
+    log(`Presenças: ${npcNames.length ? npcNames.join(', ') : 'nenhuma'}`, 'sys');
+    const visibleLoot = (room.loot||[]).filter(en=>!state.looted[`${state.x},${state.y}|${en.id}`])
+      .map(en=> en.id==='credchip' ? 'créditos esquecidos' : ITEMS[en.id].name);
+    log(`Itens visíveis: ${visibleLoot.length ? visibleLoot.join(', ') : 'nenhum'}`, 'sys');
+    log(`Saídas: ${hubExits(state.x,state.y).map(d=>DIR_LABEL[d]).join(', ')}`, 'sys');
+    renderAll();
+    presentContextChoices();
+  }
+
+  function loot(){
+    if(state.mode!=='hub'){ log('Nada para saquear agora.','warn'); return; }
+    if(state.mode==='hub' && state.flags.sentryPursuit){
+      state.flags.sentryPursuit = false;
+      log('A Sentinela-Drone aparece exatamente quando você ia saquear o lugar.','bad');
+      startCombat('sentryDrone','hub');
+      return;
+    }
+    if(emergeFledEnemy()) return;
+    const room = currentRoom();
+    let got = false;
+    (room.loot||[]).forEach(entry=>{
+      const k = `${state.x},${state.y}|${entry.id}`;
+      if(state.looted[k]) return;
+      if(entry.id==='credchip'){
+        const c = rand(3,6);
+        state.credits += c; state.looted[k]=true; got=true;
+        log(`Encontrado: chip de créditos perdido (+${c} créditos).`,'good');
+        return;
+      }
+      const ok = addItem(entry.id, entry.qty||1);
+      if(ok){ state.looted[k]=true; got=true; log(`Coletado: ${ITEMS[entry.id].name}.`,'good'); }
+      else log(`Carga cheia: ${ITEMS[entry.id].name} ficou para trás.`,'warn');
+    });
+    if(!got) log('Nada novo para saquear aqui.','sys');
+    renderAll();
+    presentContextChoices();
+  }
+
+  function talk(idArg){
+    if(state.mode!=='hub'){ log('Sem ninguém para conversar agora.','warn'); return; }
+    const room = currentRoom();
+    const npcs = activeNpcs(room);
+    let id = idArg && npcs.includes(idArg) ? idArg : npcs[0];
+    if(!id){ log('Não há ninguém aqui para conversar.','sys'); return; }
+    const n = NPCS[id];
+    if(id==='drone_sentry' && state.flags.serverAccess && !state.flags.sentryAlerted){
+      state.flags.sentryAlerted = true;
+      log('PROTOCOLO DE SEGURANÇA: scanning... suspeito + falha de segurança detectados!','bad');
+      log(`${n.name} trava o foco em você. A violação na grade sul foi registrada — não há mais conversa possível.`,'bad');
+      startCombat('sentryDrone','hub');
+      return;
+    }
+    state.npcTalkCount[id] = (state.npcTalkCount[id]||0) + 1;
+    const count = state.npcTalkCount[id];
+    let line;
+    if(n.suspicious && count>2 && n.suspiciousLines && n.suspiciousLines.length){
+      line = n.suspiciousLines[Math.min(count-3, n.suspiciousLines.length-1)];
+    } else {
+      line = choice(n.lines);
+    }
+    log(`${n.name}: "${line}"`, 'accent');
+    if(id==='doc' && !state.flags.docHealUsed && state.hp < state.maxHp){
+      state.flags.docHealUsed = true;
+      state.hp = clamp(state.hp+3,0,state.maxHp);
+      log('Dra. Vale aplica um curativo de cortesia. HP +3.','good');
+    }
+    if(id==='fixer' && !state.flags.objective){
+      log('Dica: o Datavault Omega está trancado por segurança. Hackeie a Antecâmara de Segurança para liberar o acesso até ele.','dim');
+    }
+    if(id==='drone_sentry' && !state.flags.serverAccess){
+      log('Dica: a grade ao sul (Sala de Servidores) responde a uma intrusão bem-sucedida neste corredor.','dim');
+    }
+    if(id==='guard_npc' && !state.flags.vaultAccess){
+      log('Dica: hackear esta antecâmara destrava o acesso ao Datavault Omega — ou, se preferir arriscar os créditos, tente subornar.','dim');
+    }
+    if(id==='kernel9' && !state.flags.cipher){
+      log('Dica: HACKEAR aqui ou conseguir uma Cifra de Rede destrava o elevador de manutenção.','dim');
+    }
+    if(id==='ratking') unlockLore('ratking_secret');
+    if(n.suspicious && count>=3 && !state.npcDefeated[id]){
+      const chance = Math.min(0.6, 0.15*(count-2));
+      if(Math.random()<chance){
+        log(`${n.name} perde a paciência com sua insistência e parte para o ataque.`,'bad');
+        startCombat(n.hostileEnemy, 'hub', { npcId:id });
+        return;
+      }
+    }
+    renderAll();
+    presentContextChoices();
+  }
+
+  function move(dirArg){
+    if(state.mode!=='hub'){ log('Movimento indisponível agora.','warn'); return; }
+    const dir = normalizeDir(dirArg);
+    if(!dir){ log('Direção inválida. Use norte, sul, leste ou oeste.','warn'); return; }
+    if(!hubExits(state.x,state.y).includes(dir)){ log('Sem passagem nessa direção.','warn'); return; }
+    const v = DIRS[dir];
+    const nx = clamp(state.x+v[0],0,2);
+    const ny = clamp(state.y+v[1],0,2);
+    const targetRoom = HUB[posKey(nx,ny)];
+    if(targetRoom.locked && !state.flags[targetRoom.lockFlag]){
+      log(targetRoom.lockHint || 'Acesso bloqueado por segurança.','warn');
+      return;
+    }
+    if(currentRoom().id==='vaultcorridor' && dir==='sul' && sentryInterferes()){
+      log('A Sentinela-Drone se interpõe na passagem lateral e ataca antes que você alcance os servidores.','bad');
+      startCombat('sentryDrone','hub');
+      return;
+    }
+    if(state.ap<=0){ log('PA insuficiente. Descanse ou espere para recuperar.','warn'); return; }
+    state.ap--;
+    state.x = nx;
+    state.y = ny;
+    state.noise = clamp(state.noise+1,0,state.maxNoise);
+    if(Math.random()<0.12){
+      state.stress = clamp(state.stress+1,0,state.maxStress);
+      log('A tensão do setor pesa. Estresse +1.','warn');
+      checkStressOverload();
+      if(state.combat){ renderAll(); return; }
+    }
+    enterRoom();
+    randomAmbush();
+    if(state.combat) return;
+    checkNoiseEscalation();
+    if(state.combat || state.gameOver) return;
+    renderAll();
+    presentContextChoices();
+  }
+
+  function scan(){
+    state.noise = clamp(state.noise+1,0,state.maxNoise);
+    if(state.mode==='dungeon'){
+      log(`Varredura de setor: Nível ${state.dungeon.floor}/${state.dungeon.maxFloors}, Ruído ${state.noise}/${state.maxNoise}.`,'accent');
+    } else {
+      const room = currentRoom();
+      log(`Varredura em ${room.name}. Ruído subiu para ${state.noise}.`,'accent');
+      if(room.id==='server' && !state.flags.cipher) log('Leitura: vulnerabilidade lógica detectada. HACKEAR tem boas chances aqui.','warn');
+      else if(room.id==='vault' && !state.flags.vaultCleared) log('Leitura: núcleo de segurança instável. Algo dorme lá dentro.','bad');
+      else log('Leitura: risco moderado. Nada além do óbvio.','sys');
+    }
+    checkNoiseEscalation();
+    renderAll();
+    if(!state.combat) presentContextChoices();
+  }
+
+  function predictEnemyMove(e){
+    const hints = {
+      bleed:'Sensores indicam um golpe cortante na próxima jogada — risco de sangramento mental.',
+      alarm:'O inimigo prepara um sinal de alarme. Espere um pico de Ruído no próximo golpe.',
+      noise:'Padrão de interferência detectado: a próxima ação deve gerar mais Ruído.',
+      mindspike:'Frequência neural hostil detectada. O próximo golpe pode pesar mais no Estresse.',
+      corrode:'Resíduo corrosivo nos atuadores: o próximo golpe deve ignorar parte da sua armadura.',
+      lockdown:'Protocolo de bloqueio pronto para disparar — risco de perder a próxima ação.',
+      phase:'Núcleo instável: se a fase final começar, o próximo golpe pode sobrecarregar.',
+      swarm:'Padrão de enxame: o próximo ataque deve vir dividido em dois golpes.'
+    };
+    return hints[e.special] || 'Nenhum padrão crítico detectado — ataque convencional esperado.';
+  }
+
+  function combatScan(){
+    if(!state.combat) return;
+    const e = state.combat.enemy;
+    const raw = rollD20();
+    const total = raw + state.hack;
+    const target = 11;
+    log(`Varredura tática: ${raw}+${state.hack}=${total} vs DR ${target}`,'dim');
+    if(raw===20){
+      state.combat.hackVulnerable = true;
+      state.combat.weakPointBonus = 2;
+      log(`CRÍTICO: ${e.name} fica com um ponto cego exposto. Próxima ação ofensiva +2, e a próxima intrusão ignora a armadura dele.`,'good');
+    } else if(total>=target){
+      log(`Varredura bem-sucedida. ${predictEnemyMove(e)}`,'good');
+      if(Math.random()<0.5){
+        state.combat.weakPointBonus = 2;
+        log('Um ponto fraco foi identificado. Próxima ação ofensiva +2.','accent');
+      }
+    } else {
+      log('Varredura inconclusiva. O ruído do confronto encobre os sinais.','warn');
+    }
+    enemyTurn();
+    if(state.gameOver) return;
+    renderAll();
+    presentContextChoices();
+  }
+
+  function hack(){
+    if(state.combat) return combatAction('hack');
+    if(state.mode==='dungeon'){
+      if(!state.dungeon || state.dungeon.currentType!=='terminal' || state.dungeon.terminalHacked){
+        log('Nada para hackear aqui.','warn');
+        return;
+      }
+      if(state.ap<=0){ log('PA insuficiente para uma intrusão.','warn'); return; }
+      state.ap--;
+      state.dungeon.terminalHacked = true;
+      const raw = rollD20();
+      const total = raw + state.hack;
+      const target = 11;
+      log(`Intrusão: ${raw}+${state.hack}=${total} vs DR ${target}`,'sys');
+      if(total>=target){
+        log('Intrusão bem-sucedida. O terminal libera um cache protegido.','good');
+        const drop = randomSupplyDrop();
+        if(drop.ok) log(`Recuperado: ${ITEMS[drop.id].name}${drop.qty>1?` x${drop.qty}`:''}.`,'good');
+        state.noise = clamp(state.noise-2,0,state.maxNoise);
+      } else {
+        log('Intrusão falhou. O terminal trava e dispara um alarme local.','bad');
+        state.noise = clamp(state.noise+2,0,state.maxNoise);
+        state.stress = clamp(state.stress+1,0,state.maxStress);
+        checkStressOverload();
+      }
+      checkNoiseEscalation();
+      if(state.combat) return;
+      renderAll();
+      presentContextChoices();
+      return;
+    }
+    if(state.mode!=='hub'){ log('Nada para hackear aqui.','warn'); return; }
+    const room = currentRoom();
+    if(!room.hackable){ log('Nada digno de intrusão neste local.','warn'); return; }
+    if(roomHackAlreadyDone(room)){ log('Este sistema já foi comprometido. Nada mais a hackear aqui.','sys'); return; }
+    if(state.ap<=0){ log('PA insuficiente para uma intrusão.','warn'); return; }
+    if(sentryInterferes()){
+      log('A Sentinela-Drone ataca no meio da tentativa de intrusão.','bad');
+      startCombat('sentryDrone','hub');
+      return;
+    }
+    state.ap--;
+    state.noise = clamp(state.noise+1,0,state.maxNoise);
+    state.hackAttempts[room.id] = (state.hackAttempts[room.id]||0) + 1;
+    const raw = rollD20();
+    const total = raw + state.hack;
+    let target = 14;
+    if(room.id==='server') target = 12;
+    if(room.id==='security') target = 13;
+    if(room.id==='vaultcorridor') target = 11;
+    if(room.id==='vault') target = state.flags.cipher ? 13 : 16;
+    const fails = state.hackFails[room.id] || 0;
+    target += Math.min(3, fails);
+    log(`Intrusão: ${raw}+${state.hack}=${total} vs DR ${target}`,'sys');
+    if(total>=target){
+      state.hackFails[room.id] = 0;
+      log('Intrusão bem-sucedida.','good');
+      if(room.id==='server'){
+        state.flags.cipher = true; state.flags.aiTricked = true;
+        state.noise = clamp(state.noise-2,0,state.maxNoise);
+        unlockLore('kernel_tricked');
+        log('KERNEL-9 perde a desconfiança. Os elevadores de manutenção respondem novamente.','good');
+      } else if(room.id==='security'){
+        state.flags.keycard = true;
+        state.flags.vaultAccess = true;
+        unlockLore('security_down');
+        log('As travas da antecâmara caem. O guarda finge não ter visto nada. O acesso ao Datavault Omega está liberado.','good');
+      } else if(room.id==='vaultcorridor'){
+        state.flags.serverAccess = true;
+        log('As câmeras do corredor entram em loop cego. A grade de segurança da Sala de Servidores se abre.','good');
+      } else if(room.id==='vault'){
+        openVault();
+        return;
+      }
+    } else {
+      state.hackFails[room.id] = fails + 1;
+      log('Intrusão falhou. O sistema registra sua tentativa.','bad');
+      state.stress = clamp(state.stress+1,0,state.maxStress);
+      checkStressOverload();
+      if(room.id==='vaultcorridor' || room.id==='security'){
+        const npcId = activeNpcs(room)[0];
+        const n = npcId && NPCS[npcId];
+        if(n && n.hostileEnemy && !state.gameOver){
+          const aggroChance = 0.25 + Math.min(0.35, 0.1*fails);
+          if(Math.random()<aggroChance){
+            log(`${n.name} detecta a intrusão falha e reage.`,'bad');
+            startCombat(n.hostileEnemy, 'hub', { npcId });
+            return;
+          }
+        }
+      }
+    }
+    checkNoiseEscalation();
+    if(state.combat) return;
+    renderAll();
+    presentContextChoices();
+  }
+
+  function openVault(){
+    log('O Datavault Omega libera os lacres. Algo desperta lá dentro.','warn');
+    startCombat('vaultSentinel','hub');
+    if(state.flags.keycard){
+      state.combat.enemy.armor = Math.max(0, state.combat.enemy.armor-1);
+      log('Sem suporte de segurança ativo, a sentinela está mais vulnerável.','sys');
+    }
+  }
+
+  function bribeGuard(){
+    if(state.mode!=='hub'){ log('Sem ninguém para subornar agora.','warn'); return; }
+    const room = currentRoom();
+    if(room.id!=='security'){ log('Sem ninguém para subornar aqui.','warn'); return; }
+    if(state.flags.vaultAccess){ log('Não há mais nada a negociar aqui.','sys'); return; }
+    if(!activeNpcs(room).includes('guard_npc')){ log('Não há ninguém aqui para subornar.','sys'); return; }
+    if(state.credits < BRIBE_PRICE){ log(`Suborno custaria ${BRIBE_PRICE} créditos. Você não tem o suficiente.`,'warn'); return; }
+    state.bribeAttempts = (state.bribeAttempts||0) + 1;
+    const attempts = state.bribeAttempts;
+    const successChance = Math.max(0.2, 0.45 - 0.05*(attempts-1));
+    const alertChance = Math.min(0.5, 0.25 + 0.08*(attempts-1));
+    const r = Math.random();
+    if(r < successChance){
+      state.credits -= BRIBE_PRICE;
+      state.flags.vaultAccess = true;
+      state.flags.keycard = true;
+      log(`Você desliza ${BRIBE_PRICE} créditos sobre o balcão. O guarda guarda o crédito sem fazer perguntas. "Não vi nada." O acesso ao Datavault Omega está liberado.`,'good');
+    } else if(r < successChance + alertChance){
+      state.credits -= BRIBE_PRICE;
+      log(`O guarda pega os ${BRIBE_PRICE} créditos, olha para os dois lados — e aperta o rádio no ombro mesmo assim. "Tentativa de suborno, antecâmara." Reforços a caminho.`,'bad');
+      state.noise = clamp(state.noise+3,0,state.maxNoise);
+      checkNoiseEscalation();
+    } else {
+      log('O guarda recusa com um olhar cansado antes que você chegue a oferecer o valor todo. "Nem por isso. Tenta de outro jeito." Nada além disso acontece.','warn');
+    }
+    if(state.combat){ renderAll(); return; }
+    renderAll();
+    presentContextChoices();
+  }
+
+  function activeShopCatalog(){
+    if(state.mode==='hub'){
+      const room = currentRoom();
+      if(room && room.shop) return catalogFor(room.shop);
+    }
+    return null;
+  }
+
+  function openShop(){
+    const room = currentRoom();
+    if(!room || !room.shop){ log('Sem comércio aqui.','warn'); return; }
+    maybeAnnounceCloak();
+    const catalog = catalogFor(room.shop);
+    log(room.shop==='market' ? 'O vendedor exibe a banca de sucata e equipamentos:' : 'A Dra. Vale aponta para o armário de suprimentos:', 'sys');
+    const chips = Object.entries(catalog).map(([id,price])=>({ label:`Comprar ${ITEMS[id].name}${id==='ammo'?' x10':''} (${price}cr)`, cmd:`comprar ${id}` }));
+    chips.push({ label:'Fechar Loja', cmd:'look' });
+    presentChoices(chips);
+  }
+
+  function buy(idArg){
+    const catalog = activeShopCatalog();
+    if(!catalog){ log('Sem comércio aqui.','warn'); return; }
+    const id = ALIASES[(idArg||'').toLowerCase()] || (idArg||'').toLowerCase();
+    const price = catalog[id];
+    if(!price){ log('Esse item não está à venda aqui.','warn'); return; }
+    if(state.credits < price){ log('Créditos insuficientes.','warn'); return; }
+    const qty = id==='ammo' ? 10 : 1;
+    if(!addItem(id,qty)){ log('Sem espaço de carga para esse item.','warn'); return; }
+    state.credits -= price;
+    if(LIMITED_STOCK.includes(id)) state.shopPurchased[id] = true;
+    log(`Comprado: ${ITEMS[id].name}${qty>1?` x${qty}`:''} por ${price} créditos.${LIMITED_STOCK.includes(id)?' (peça única — estoque esgotado)':''}`,'good');
+    renderAll();
+    if(state.mode==='dungeon') presentContextChoices(); else openShop();
+  }
+
+  function dropItem(idArg){
+    const id = ALIASES[(idArg||'').toLowerCase()] || (idArg||'').toLowerCase();
+    if(!hasItem(id)){ log('Item não encontrado no inventário.','warn'); return; }
+    removeItem(id,1);
+    log(`Descartado: ${ITEMS[id] ? ITEMS[id].name : id}.`,'sys');
+    renderAll();
+    if(!state.combat) presentContextChoices();
+  }
+
+  function randomAmbush(){
+    if(state.combat || state.gameOver || state.win) return;
+    const room = currentRoom();
+    const chance = room.ambush || 0;
+    if(Math.random() < chance){
+      let pool = room.enemyPool && room.enemyPool.length ? room.enemyPool.slice() : ['thug'];
+      if(room.id==='security' && state.noise>=6) pool.push('guard_elite');
+      if(room.id==='vaultcorridor' && state.noise>=6) pool.push('sentryDrone');
+      startCombat(choice(pool), 'hub');
+    }
+  }
+
+  /* ============================ ITEM USE ============================ */
+  function useItem(raw){
+    if(!raw){ log('Use o quê? Especifique um item.','warn'); return; }
+    const id = ALIASES[raw.toLowerCase().trim()] || raw.toLowerCase().trim();
+    if(!hasItem(id)){ log(`Você não possui "${raw}".`,'warn'); return; }
+    const inCombat = !!state.combat;
+    switch(id){
+      case 'stim':
+        state.hp = clamp(state.hp+6,0,state.maxHp);
+        removeItem('stim');
+        log('Stim Patch aplicado. HP +6.','good');
+        break;
+      case 'battery':
+        removeItem('battery');
+        state.ap = clamp(state.ap+2,0,state.maxAp);
+        log(`Célula de Bateria recarrega seus sistemas. PA +2.${inCombat ? ' Mesmo em combate, a reserva de intrusão responde.' : ''}`,'good');
+        break;
+      case 'smoke':
+        removeItem('smoke');
+        if(inCombat){
+          state.combat.smokeActive = true;
+          state.combatSmokeFleeBonus = true;
+          log('Fumaça liberada no confronto. Próximo golpe reduzido e fuga facilitada.','good');
+        } else {
+          state.noise = clamp(state.noise-3,0,state.maxNoise);
+          log('Fumaça dispersa sensores próximos. Ruído -3.','good');
+        }
+        break;
+      case 'overclock':
+        removeItem('overclock');
+        state.overclockArmed = true;
+        log('Overclock armado. Sua próxima ação ofensiva será rerrolada.','good');
+        break;
+      case 'armor_patch':
+        state.hp = clamp(state.hp+3,0,state.maxHp);
+        state.noise = clamp(state.noise-1,0,state.maxNoise);
+        removeItem('armor_patch');
+        log('Remendo aplicado. HP +3, Ruído -1.','good');
+        break;
+      case 'plated_vest':
+        if(state.armor >= state.baseArmor + 1){ log('O colete já está vestido. Armadura já aplicada.','sys'); return; }
+        state.armor += 1;
+        log('Colete reforçado vestido. Armadura +1 enquanto equipado.','good');
+        return;
+      case 'shiv':
+        log('A lâmina já está pronta na manga. O bônus é passivo enquanto você a carregar.','sys');
+        return;
+      case 'pistol':
+        log('A pistola já está em punho. Use DISPARAR em combate para atirar.','sys');
+        return;
+      case 'cloak':
+        log('A Capa Termo-óptica já está vestida. O efeito é automático ao entrar em combate.','sys');
+        return;
+      case 'ammo':
+        log('Munição é consumida automaticamente ao disparar em combate.','sys');
+        return;
+      case 'cipher':
+        if(inCombat && state.combat){
+          removeItem('cipher');
+          state.combat.enemy.hp = clamp(state.combat.enemy.hp-4,0,state.combat.enemy.maxHp);
+          log('A Cifra interfere no núcleo hostil. 4 de dano verdadeiro.','good');
+          if(state.combat.enemy.hp<=0){ endCombat(); return; }
+        } else if(state.mode==='hub' && posKey(state.x,state.y)==='2,1'){
+          removeItem('cipher');
+          state.flags.cipher = true; state.flags.aiTricked = true;
+          state.noise = clamp(state.noise-2,0,state.maxNoise);
+          log('Cifra implantada nos servidores. KERNEL-9 perde a desconfiança.','good');
+        } else {
+          log('A Cifra não encontra uma tomada lógica aqui.','warn');
+        }
+        break;
+      default:
+        log('Item sem efeito programado.','warn');
+    }
+    checkStressOverload();
+    checkNoiseEscalation();
+    if(state.gameOver) return;
+    if(state.combat){ enemyTurn(); if(state.gameOver) return; }
+    renderAll();
+    presentContextChoices();
+  }
+
+  function quickUse(){
+    const order = ['stim','armor_patch','battery','smoke','overclock','cipher'];
+    const found = order.find(id=>hasItem(id));
+    if(!found){ log('Nenhum item útil disponível agora.','warn'); return; }
+    useItem(found);
+  }
+
+  /* ============================ REST / WAIT ============================ */
+  function rest(){
+    if(state.mode==='combat'){ log('Sem descanso possível em combate.','warn'); return; }
+    if(state.mode==='hub' && state.flags.sentryPursuit){
+      state.flags.sentryPursuit = false;
+      log('A Sentinela-Drone te alcança antes que você consiga se acomodar — ela não desistiu da caçada.','bad');
+      startCombat('sentryDrone','hub');
+      return;
+    }
+    if(emergeFledEnemy()) return;
+    state.hp = clamp(state.hp+2,0,state.maxHp);
+    state.stress = clamp(state.stress-2,0,state.maxStress);
+    if(state.mode==='hub' || state.mode==='dungeon'){
+      state.ap = state.maxAp;
+      if(state.mode==='hub') passiveNoiseEffect();
+      else { state.noise = clamp(state.noise+1,0,state.maxNoise); log('Pausa no núcleo. Ruído +1.','dim'); }
+    }
+    log('Pausa tática. HP +2, Estresse -2. PA restaurado.','sys');
+    randomDowntimeEvent();
+    checkNoiseEscalation();
+    if(state.combat || state.gameOver) return;
+    renderAll();
+    presentContextChoices();
+  }
+
+  function waitTurn(){
+    if(state.mode==='combat'){ log('Não é possível esperar em combate. Escolha uma ação.','warn'); return; }
+    if(state.mode==='hub' && state.flags.sentryPursuit){
+      state.flags.sentryPursuit = false;
+      log('A Sentinela-Drone te alcança enquanto você tenta ganhar tempo.','bad');
+      startCombat('sentryDrone','hub');
+      return;
+    }
+    if(emergeFledEnemy()) return;
+    if(state.mode==='hub' || state.mode==='dungeon'){
+      state.ap = state.maxAp;
+      if(state.mode==='hub') passiveNoiseEffect();
+      else { state.noise = clamp(state.noise+1,0,state.maxNoise); log('Pausa no núcleo. Ruído +1.','dim'); }
+    }
+    log('Você deixa o relógio correr. O distrito não se importa.','sys');
+    randomDowntimeEvent();
+    checkNoiseEscalation();
+    if(state.combat || state.gameOver) return;
+    renderAll();
+    presentContextChoices();
+  }
+
+  const NOISE_CALM_ROOMS   = ['safehub','market','drain'];
+  const NOISE_STABLE_ROOMS = ['clinic','alley'];
+
+  function emergeFledEnemy(){
+    if(state.mode!=='hub') return false;
+    const room = currentRoom();
+    if(!room) return false;
+    const isSentryRoom = room.id==='vaultcorridor' && state.flags.sentryAlerted && !state.npcDefeated['drone_sentry'];
+    const isFleeRoom = state.flags.lastFledRoom === posKey(state.x, state.y);
+    if(isSentryRoom){
+      const roll = rand(1,6) + (state.ranged||0);
+      if(roll<=4){
+        log('A Sentinela-Drone emerge do portão ao fundo do corredor.','bad');
+        startCombat('sentryDrone','hub');
+        return true;
+      }
+    }
+    if(isFleeRoom && !isSentryRoom){
+      const pool = room.enemyPool && room.enemyPool.length ? room.enemyPool.filter(e=>e!=='sentryDrone') : ['thug'];
+      if(Math.random()<0.35){
+        const key = choice(pool);
+        log(`Algo ainda estava esperando — ${ENEMIES[key].name} reaparece.`,'bad');
+        startCombat(key,'hub');
+        return true;
+      }
+    }
+    return false;
+  }
+
+  function passiveNoiseEffect(){
+    if(state.mode!=='hub') return;
+    const room = currentRoom();
+    if(!room) return;
+    if(NOISE_CALM_ROOMS.includes(room.id) && state.noise>0){
+      state.noise = clamp(state.noise-1,0,state.maxNoise);
+      log('O ambiente dissolve a tensão passivamente. Ruído -1.','dim');
+    } else if(NOISE_STABLE_ROOMS.includes(room.id)){
+      /* ruído não aumenta nem diminui automaticamente nessas salas */
+    }
+  }
+
+  function randomDowntimeEvent(){
+    if(Math.random()<0.2){
+      const r = rand(1,3);
+      if(r===1){ state.credits += 1; log('Um crédito perdido aparece sob os destroços.','good'); }
+      else if(r===2){ state.stress = clamp(state.stress+1,0,state.maxStress); log('Um ruído distante eleva o nervosismo.','warn'); checkStressOverload(); }
+      else log('Silêncio operacional. Raro, e por isso suspeito.','dim');
+    }
+  }
+
+  /* ============================ COMBAT ============================ */
+  function startCombat(enemyKey, returnTo, meta){
+    const base = ENEMIES[enemyKey];
+    const scale = returnTo==='dungeon' && state.dungeon ? (state.dungeon.floor-1) : 0;
+    const enemy = {
+      key:enemyKey, name:base.name,
+      hp: base.hp+scale, maxHp: base.hp+scale,
+      atk: base.atk + Math.floor(scale/2),
+      armor: base.armor + (scale>3?1:0),
+      credit:[base.credit[0]+scale, base.credit[1]+scale],
+      special: base.special, synthetic: !!base.synthetic, boss: !!base.boss, rareDrop: !!base.rareDrop,
+      phase: base.boss ? 1 : undefined,
+      stunned:false
+    };
+    if(enemyKey==='sentryDrone'){
+      if(!state.flags.sentryAlerted){
+        state.flags.sentryAlerted = true;
+        log('A Sentinela-Drone do Corredor emerge em definitivo do portão ao fundo do corredor. Não há mais conversa possível com ela.','bad');
+      } else {
+        enemy.atk += 1;
+      }
+    }
+    state.combat = {
+      enemy, returnTo, playerStunned:false,
+      machinePrayerUsed:false, coldBootUsed:false, ghostStepUsed:false, smokeActive:false,
+      cloakActive:false, firstActionDone:false, weakPointBonus:0, hackVulnerable:false,
+      npcId: (meta && meta.npcId) || null
+    };
+    state.mode = 'combat';
+    log(`\n>> CONTATO HOSTIL: ${enemy.name} <<`,'bad');
+    if(hasItem('cloak')){
+      const detected = (enemy.synthetic || enemy.boss) && Math.random()<0.5;
+      state.combat.cloakActive = !detected;
+      log(detected
+        ? 'Sensores avançados perfuram sua Capa Termo-óptica. Camuflagem comprometida nesta luta.'
+        : 'Capa Termo-óptica ativa. Você se move como ruído de fundo.', detected ? 'warn' : 'accent');
+    }
+    const initDie = rand(1,6);
+    const initTotal = initDie + (state.ranged||0);
+    if(initTotal<=4){
+      log(`Iniciativa: ${initDie}+${state.ranged||0}=${initTotal} (≤4) — ${enemy.name} reage primeiro!`,'bad');
+      renderAll();
+      enemyTurn();
+      if(state.gameOver) return;
+    } else {
+      log(`Iniciativa: ${initDie}+${state.ranged||0}=${initTotal} — você reage primeiro.`,'good');
+    }
+    renderAll();
+    presentContextChoices();
+  }
+
+  function sentryInterferes(){
+    if(!state.flags.sentryAlerted || state.npcDefeated['drone_sentry']) return false;
+    const room = currentRoom();
+    if(!room || room.id!=='vaultcorridor') return false;
+    const roll = rand(1,6) + (state.ranged||0);
+    return roll<=4;
+  }
+
+  function combatAction(kind){
+    if(!state.combat){ log('Sem combate ativo.','warn'); return; }
+    if(state.combat.playerStunned){
+      state.combat.playerStunned = false;
+      log('Seus controles ainda estão travados. Você perde a ação.','warn');
+      enemyTurn();
+      if(state.gameOver) return;
+      renderAll();
+      presentContextChoices();
+      return;
+    }
+    if(kind==='attack' || kind==='hack') return resolvePlayerAction(kind);
+    if(kind==='ranged') return resolveRangedAttack();
+    if(kind==='flee') return doFlee();
+    if(kind==='scan') return combatScan();
+  }
+
+  function resolveRangedAttack(){
+    const e = state.combat.enemy;
+    if(!hasItem('pistol')){ log('Você não está portando uma arma de longo alcance.','warn'); return; }
+    const ammoStack = state.inventory.find(i=>i.id==='ammo');
+    const available = ammoStack ? ammoStack.qty : 0;
+    if(available<=0){ log('Sem munição para disparar.','warn'); return; }
+
+    const jamRoll = rand(1,6);
+    if(jamRoll===1){
+      log('Disparo: rolagem 1 no d6 — a arma trava na câmara.','bad');
+      state.noise = clamp(state.noise+1,0,state.maxNoise);
+      checkNoiseEscalation();
+      if(state.combat){
+        enemyTurn();
+        if(state.gameOver) return;
+      }
+      renderAll();
+      presentContextChoices();
+      return;
+    }
+    const shotsIntended = jamRoll - 1;
+    const shotsFired = Math.min(shotsIntended, available);
+    log(`Disparo: rolagem ${jamRoll} no d6 — ${shotsIntended} disparo${shotsIntended>1?'s':''} na câmara.`,'dim');
+    if(shotsFired < shotsIntended){
+      log(`Munição insuficiente para a rajada completa: apenas ${shotsFired} de ${shotsIntended} cartuchos disponíveis.`,'warn');
+    }
+    removeItem('ammo', shotsFired);
+
+    let mod = state.ranged||0;
+    if(state.shaken){ mod -= 1; state.shaken = false; log('Tremor residual: -1 nesta rajada.','dim'); }
+    if(state.combat.weakPointBonus){
+      mod += state.combat.weakPointBonus;
+      log(`Ponto fraco explorado: +${state.combat.weakPointBonus} nesta rajada.`,'accent');
+      state.combat.weakPointBonus = 0;
+    }
+    const isSurprise = state.combat.cloakActive && !state.combat.firstActionDone;
+    state.combat.firstActionDone = true;
+    const target = 12 + e.armor;
+
+    let hits = 0, totalDmg = 0;
+    for(let i=0;i<shotsFired;i++){
+      let raw = rollD20();
+      if(state.overclockArmed){
+        const raw2 = rollD20();
+        log(`Overclock no disparo ${i+1}: ${raw} → rerrolado ${raw2}.`,'sys');
+        raw = Math.max(raw, raw2);
+        state.overclockArmed = false;
+      }
+      const total = raw + mod;
+      if(total>=target){
+        let dmg = roll(3, Math.max(0, Math.floor(mod/2)));
+        if(raw===20){ dmg*=2; log(`Disparo ${i+1}/${shotsFired}: ${raw}+${mod}=${total} vs DR ${target} — CRÍTICO, ${dmg} de dano.`,'good'); }
+        else log(`Disparo ${i+1}/${shotsFired}: ${raw}+${mod}=${total} vs DR ${target} — acerto, ${dmg} de dano.`,'good');
+        hits++; totalDmg += dmg;
+      } else {
+        log(`Disparo ${i+1}/${shotsFired}: ${raw}+${mod}=${total} vs DR ${target} — erra o alvo.`,'warn');
+      }
+    }
+
+    if(hits>0){
+      if(isSurprise){
+        totalDmg = Math.max(hits, totalDmg) + 3;
+        log('Ataque surpresa sob a Capa Termo-óptica: o alvo não reage a tempo. Armadura ignorada nesta rajada, +3 de dano.','accent');
+      } else {
+        totalDmg = Math.max(hits, totalDmg - e.armor);
+      }
+      e.hp = clamp(e.hp-totalDmg,0,e.maxHp);
+      log(`Rajada conclui: ${hits}/${shotsFired} acerto(s), ${totalDmg} de dano total em ${e.name}. (${Math.max(e.hp,0)}/${e.maxHp})`,'good');
+    } else {
+      log('Nenhum disparo da rajada conectou.','warn');
+    }
+
+    const noiseGain = Math.min(3, 1 + Math.ceil(shotsFired/2));
+    state.noise = clamp(state.noise + noiseGain, 0, state.maxNoise);
+
+    if(e.hp<=0){ return endCombat(); }
+    finishPlayerTurn();
+  }
+
+  function resolvePlayerAction(kind){
+    const e = state.combat.enemy;
+    if(kind==='hack'){
+      if(state.ap<=0){ log('PA insuficiente para hackear em combate. A intrusão exige reserva mental livre — descanse fora de combate para recuperar.','warn'); return; }
+      state.ap--;
+    }
+    let mod = kind==='attack' ? state.melee + (hasItem('shiv')?1:0) : state.hack;
+    if(state.shaken){ mod -= 1; state.shaken = false; log('Tremor residual: -1 nesta ação.','dim'); }
+    if(state.combat.weakPointBonus){
+      mod += state.combat.weakPointBonus;
+      log(`Ponto fraco explorado: +${state.combat.weakPointBonus} nesta ação.`,'accent');
+      state.combat.weakPointBonus = 0;
+    }
+    let ignoreArmorThisHit = false;
+    if(kind==='hack' && state.combat.hackVulnerable){
+      mod += 4; ignoreArmorThisHit = true; state.combat.hackVulnerable = false;
+      log('Vulnerabilidade explorada: a intrusão ignora a armadura do alvo.','accent');
+    }
+    if(kind==='attack' && state.perkKey==='chrome' && !state.combat.machinePrayerUsed){
+      mod += 2; state.stress = clamp(state.stress-1,0,state.maxStress); state.combat.machinePrayerUsed = true;
+      log('Oração de Máquina: +2 no ataque, Estresse -1.','accent');
+    }
+    if(kind==='hack' && state.perkKey==='magus' && !state.combat.coldBootUsed){
+      mod += 3; state.combat.coldBootUsed = true;
+      log('Cold Boot: +3 na primeira intrusão deste combate.','accent');
+    }
+
+    const isSurprise = state.combat.cloakActive && !state.combat.firstActionDone;
+    state.combat.firstActionDone = true;
+
+    let raw = rollD20();
+    if(state.overclockArmed){
+      const raw2 = rollD20();
+      log(`Overclock: ${raw} → rerrolado ${raw2}.`,'sys');
+      raw = Math.max(raw, raw2);
+      state.overclockArmed = false;
+    }
+    if(raw===1){
+      state.stress = clamp(state.stress+1,0,state.maxStress);
+      log('Falha crítica. O sistema vira contra você.','bad');
+      checkStressOverload();
+      return finishPlayerTurn();
+    }
+    const total = raw + mod;
+    const target = 12 + (ignoreArmorThisHit ? 0 : e.armor);
+    const kindLabel = kind==='attack' ? 'Ataque' : 'Intrusão';
+    log(`${kindLabel}: ${raw}+${mod}=${total} vs DR ${target}`,'dim');
+    if(total>=target){
+      let dmg = kind==='attack' ? roll(4, state.melee) : roll(3, state.hack);
+      if(raw===20){ dmg*=2; log('CRÍTICO! Dano dobrado.','good'); }
+      if(kind==='hack' && e.synthetic && hasItem('cipher')){
+        removeItem('cipher'); dmg += 4;
+        log('Cifra de Rede amplifica a intrusão (+4 dano verdadeiro).','good');
+      }
+      if(kind==='attack'){
+        dmg = isSurprise ? Math.max(1, dmg) : Math.max(1, dmg - e.armor);
+      }
+      if(isSurprise){
+        dmg += 3;
+        log(kind==='attack'
+          ? 'Ataque surpresa sob a Capa Termo-óptica: o alvo não reage a tempo. Armadura ignorada neste golpe, +3 de dano.'
+          : 'Ataque surpresa sob a Capa Termo-óptica: +3 de dano.', 'accent');
+      }
+      e.hp = clamp(e.hp-dmg,0,e.maxHp);
+      log(`${kindLabel} acerta ${e.name} por ${dmg} de dano. (${Math.max(e.hp,0)}/${e.maxHp})`,'good');
+      if(kind==='hack' && e.hp>0 && Math.random()<0.2){
+        e.stunned = true;
+        log(`${e.name} sofre interferência e perde o próximo turno.`,'warn');
+      }
+      const noiseGain = kind==='attack' && hasItem('shiv') ? 0 : 1;
+      state.noise = clamp(state.noise + noiseGain, 0, state.maxNoise);
+      if(e.hp<=0){ return endCombat(); }
+    } else {
+      log(`${kindLabel} falha.`,'warn');
+      state.noise = clamp(state.noise + 1, 0, state.maxNoise);
+    }
+    finishPlayerTurn();
+  }
+
+  function finishPlayerTurn(){
+    checkNoiseEscalation();
+    if(state.gameOver || state.win || !state.combat){ renderAll(); if(!state.combat) presentContextChoices(); return; }
+    enemyTurn();
+    if(state.gameOver || state.win) return;
+    renderAll();
+    presentContextChoices();
+  }
+
+  function doFlee(){
+    if(!state.combat) return;
+    let chance = 0.4;
+    if(state.combatSmokeFleeBonus){ chance += 0.25; state.combatSmokeFleeBonus = false; }
+    if(state.combat.cloakActive){ chance += 0.25; log('A Capa Termo-óptica facilita o desaparecimento.','accent'); }
+    if(state.perkKey==='runner' && !state.combat.ghostStepUsed){
+      state.combat.ghostStepUsed = true; chance = 1;
+      log('Perk Passo Fantasma: fuga garantida nesta tentativa.','accent');
+    }
+    const r = Math.random();
+    log(`Tentativa de fuga: ${Math.round(Math.min(chance,1)*100)}% de chance.`,'dim');
+    if(r<chance){
+      log('Você escapa pelos cabos e pelas sombras.','good');
+      const returnTo = state.combat.returnTo;
+      const fledEnemyKey = state.combat.enemy.key;
+      const fledRoomKey = posKey(state.x, state.y);
+      state.combat = null;
+      state.noise = clamp(state.noise+1,0,state.maxNoise);
+      state.mode = returnTo==='dungeon' ? 'dungeon' : 'hub';
+      if(fledEnemyKey==='sentryDrone'){
+        state.flags.sentryPursuit = true;
+        log('A Sentinela-Drone não desiste — você ouve os servos dela logo atrás.','warn');
+      }
+      state.flags.lastFledRoom = fledRoomKey;
+      checkNoiseEscalation();
+      renderAll();
+      if(!state.combat) presentContextChoices();
+    } else {
+      log('Fuga bloqueada.','bad');
+      state.noise = clamp(state.noise+1,0,state.maxNoise);
+      enemyTurn();
+      if(state.gameOver) return;
+      renderAll();
+      presentContextChoices();
+    }
+  }
+
+  function resolveSingleHit(rawDmg, name, ignoreArmor){
+    let dmg = ignoreArmor ? Math.max(1,rawDmg) : Math.max(1, rawDmg-state.armor);
+    if(state.combat && state.combat.smokeActive){ dmg = Math.max(0, dmg-2); state.combat.smokeActive = false; log('Fumaça residual absorve parte do golpe.','sys'); }
+    state.hp = clamp(state.hp-dmg,0,state.maxHp);
+    log(`${name} acerta por ${dmg}.`,'bad');
+    if(state.hp<=0){ state.hp = 0; gameOver(`${name} encerra sua corrida aqui.`); }
+  }
+
+  function enemyTurn(){
+    if(!state.combat) return;
+    const e = state.combat.enemy;
+    if(e.stunned){ e.stunned = false; log(`${e.name} está sobrecarregado e perde o turno.`,'good'); renderAll(); return; }
+    if(e.boss && e.phase===1 && e.hp<=Math.floor(e.maxHp/2)){
+      e.phase = 2; e.atk += 1;
+      log(`${e.name} entra em FASE 2: padrões de ataque mais agressivos.`,'bad');
+    }
+    let extraNoise = 0, extraStress = 0;
+    switch(e.special){
+      case 'bleed': if(Math.random()<0.3) extraStress = 1; break;
+      case 'alarm': if(Math.random()<0.3) extraNoise = 2; break;
+      case 'noise': if(Math.random()<0.4) extraNoise = 1; break;
+      case 'mindspike': extraStress = 1; break;
+      case 'lockdown': if(Math.random()<0.25){ state.combat.playerStunned = true; log(`${e.name} trava seus controles por um instante.`,'warn'); } break;
+    }
+    const hitRoll = rollD20();
+    const hitMod = e.atk;
+    const hitTotal = hitRoll + hitMod;
+    const hitTarget = 10 + (state.ranged||0);
+    log(`${e.name} ataca: ${hitRoll}+${hitMod}=${hitTotal} vs DR ${hitTarget}`,'dim');
+    if(hitTotal < hitTarget){
+      log(`${e.name} erra o golpe.`,'sys');
+    } else {
+      let dmg = e.atk + rand(-1,1);
+      let ignoreArmor = false;
+      if(e.special==='corrode'){ dmg += 2; ignoreArmor = true; }
+      if(e.special==='phase' && e.phase===2 && Math.random()<0.25){ dmg*=2; log('Sobrecarga do núcleo: dano duplicado.','bad'); }
+      if(hitRoll===20){ dmg = Math.ceil(dmg*1.5); log(`${e.name} acerta em cheio — golpe crítico.`,'bad'); }
+      if(e.special==='swarm'){
+        const half = Math.max(1, Math.floor(dmg/2));
+        resolveSingleHit(half, e.name, false);
+        if(!state.gameOver) resolveSingleHit(half, e.name, false);
+      } else {
+        resolveSingleHit(dmg, e.name, ignoreArmor);
+      }
+    }
+    if(state.gameOver) return;
+    if(extraNoise){ state.noise = clamp(state.noise+extraNoise,0,state.maxNoise); log(`Ruído +${extraNoise}.`,'warn'); }
+    if(extraStress){ state.stress = clamp(state.stress+extraStress,0,state.maxStress); log(`Estresse +${extraStress}.`,'warn'); checkStressOverload(); }
+    renderAll();
+  }
+
+  function endCombat(){
+    if(!state.combat) return;
+    const e = state.combat.enemy;
+    const returnTo = state.combat.returnTo;
+    const npcId = state.combat.npcId;
+    state.combat = null;
+    log(`${e.name} neutralizado.`,'good');
+    const cred = rand(e.credit[0], e.credit[1]);
+    state.credits += cred;
+    log(`Saque: +${cred} créditos.`,'good');
+    if(!e.boss && Math.random()<0.35){
+      const drop = randomSupplyDrop();
+      if(drop.ok) log(`Encontrado: ${ITEMS[drop.id].name}${drop.qty>1?` x${drop.qty}`:''}.`,'good');
+    }
+    if((e.key==='guard' || e.key==='response') && !hasItem('pistol') && Math.random()<0.2){
+      addItem('pistol',1);
+      log('Loot: Pistola Automática recuperada do inimigo.','good');
+    }
+    if(e.rareDrop && Math.random()<0.3){
+      const rare = choice(['plated_vest','cloak']);
+      if(addItem(rare,1)) log(`Loot raro: ${ITEMS[rare].name}.`,'good');
+    }
+    state.stress = clamp(state.stress-1,0,state.maxStress);
+
+    if(npcId && NPCS[npcId]){
+      state.npcDefeated[npcId] = true;
+      const grantFlag = NPCS[npcId].grantsFlag;
+      if(grantFlag && !state.flags[grantFlag]){
+        state.flags[grantFlag] = true;
+        log(`${NPCS[npcId].name} não vai mais incomodar você aqui. O caminho que ele guardava está livre.`,'accent');
+      }
+      if(npcId==='guard_npc' && !state.flags.keycard){
+        state.flags.keycard = true;
+        log('Você recolhe o crachá de acesso do guarda.','sys');
+      }
+    }
+
+    if(e.key==='vaultSentinel'){
+      state.flags.objective = true; state.flags.runner = true; state.flags.vaultCleared = true;
+      unlockLore('vault_open');
+      log('O cofre cede. Você recupera o Chip Omega e liberta o runner capturado.','accent');
+    }
+    if(e.key==='response'){
+      state.noise = clamp(state.noise-6,0,state.maxNoise);
+      log('A pressão cai. Ruído drasticamente reduzido.','good');
+    }
+    if(e.key==='archon'){
+      state.flags.matrix = true;
+      unlockLore('archon_fall');
+      log('O Núcleo K-9 entra em colapso. A matriz de dados pulsa em suas mãos.','accent');
+      ascendFromDungeon();
+      renderAll();
+      presentContextChoices();
+      return;
+    }
+
+    if(state.pendingLockdown){
+      state.pendingLockdown = false;
+      state.mode = returnTo==='dungeon' ? 'dungeon' : 'hub';
+      renderAll();
+      triggerLockdown();
+      return;
+    }
+
+    state.mode = returnTo==='dungeon' ? 'dungeon' : 'hub';
+    renderAll();
+    presentContextChoices();
+  }
+
+  function checkStressOverload(){
+    if(state.gameOver || state.win) return;
+    if(state.stress < state.maxStress) return;
+    if(state.combat){
+      log('SOBRECARGA NEURAL: você perde a próxima ação. Estresse parcialmente drenado pelo choque.','bad');
+      state.combat.playerStunned = true;
+      state.stress = Math.floor(state.maxStress*0.7);
+    } else {
+      log('COLAPSO NERVOSO: a mente trava por um instante.','bad');
+      const r = rand(1,3);
+      if(r===1 && state.inventory.length){
+        const victim = choice(state.inventory);
+        removeItem(victim.id,1);
+        log(`Você derruba e perde: ${ITEMS[victim.id].name}.`,'warn');
+      } else if(r===2){
+        state.noise = clamp(state.noise+2,0,state.maxNoise);
+        log('Reage mal ao ambiente. Ruído +2.','warn');
+      } else {
+        state.shaken = true;
+        log('Um tremor seguirá você para o próximo confronto (-1 na primeira ação).','warn');
+      }
+      state.stress = Math.floor(state.maxStress*0.6);
+    }
+  }
+
+  function checkNoiseEscalation(){
+    if(state.gameOver || state.win) return;
+    if(state.noise < state.maxNoise) return;
+    if(state.combat){ state.pendingLockdown = true; return; }
+    triggerLockdown();
+  }
+
+  function triggerLockdown(){
+    log('\nALERTA MÁXIMO: bloqueio total. Um esquadrão de resposta converge sobre sua posição.','bad');
+    const fromCtx = state.mode==='dungeon' ? 'dungeon' : 'hub';
+    startCombat('response', fromCtx);
+  }
+
+  /* ============================ DUNGEON ============================ */
+  function roomPoolForFloor(floor){
+    if(floor===1) return [['cache',3],['glitch',2],['empty',2],['corpse',2],['terminal',1],['ambush',1],['hacker',1]];
+    if(floor===2) return [['cache',2],['glitch',2],['corpse',2],['terminal',2],['ambush',2],['turret',2],['hacker',1],['empty',1]];
+    return [['ambush',3],['turret',3],['corpse',2],['terminal',1],['glitch',1],['cache',1],['hacker',1]];
+  }
+
+  function pickDungeonEnemy(type){
+    const floor = state.dungeon.floor;
+    const ambushPool = ['ghoul','ratdrone','husk','choir'];
+    const turretPool = ['wraith','sentinel9','drone'];
+    let pool = type==='turret' ? turretPool.slice() : ambushPool.slice();
+    if(floor>=3) pool.push('sentinel9');
+    return choice(pool);
+  }
+
+  function descend(){
+    if(state.mode!=='hub'){ log('Só é possível descer a partir da superfície.','warn'); return; }
+    if(posKey(state.x,state.y)!=='2,1'){ log('Volte à Sala de Servidores para descer.','warn'); return; }
+    if(!state.flags.cipher){ log('Os servidores ainda resistem. Consiga a Cifra de Rede ou hackeie esta sala primeiro.','warn'); return; }
+    if(state.flags.matrix){ log('O Núcleo K-9 já está em colapso. Não há razão para descer de novo.','sys'); return; }
+    if(state.ap<=0){ log('PA insuficiente para acionar o elevador de manutenção.','warn'); return; }
+    state.ap--;
+    state.mode = 'dungeon';
+    if(state.dungeon && state.dungeon.floor){
+      log('\n[REINGRESSO] O elevador desce de volta ao ponto onde você parou no Núcleo K-9.','accent');
+      log(`Você está em ${state.dungeon.floor}.${state.dungeon.roomIdx+1} :: ${DUNGEON_DESC[state.dungeon.currentType] || 'corredor'}`,'sys');
+      renderAll();
+      presentContextChoices();
+      return;
+    }
+    state.flags.descended = true;
+    state.dungeon = { floor:1, maxFloors:3, roomIdx:0, roomsPerFloor:3, hackerUsed:false, currentType:null, terminalHacked:false };
+    log('\n[DESCIDA] O elevador de manutenção range e desce. O ar fica mais frio, mais sintético.','accent');
+    unlockLore('descend');
+    spawnDungeonRoom(true);
+  }
+
+  function retreatToSurface(){
+    if(state.mode!=='dungeon'){ log('Comando válido apenas dentro do Núcleo K-9.','warn'); return; }
+    if(state.combat){ log('Resolva o combate antes de recuar.','warn'); return; }
+    if(state.ap<=0){ log('PA insuficiente para acionar o elevador de emergência.','warn'); return; }
+    state.ap--;
+    state.mode = 'hub';
+    state.x = 2; state.y = 1;
+    state.noise = clamp(state.noise+1,0,state.maxNoise);
+    log('\n[RECUO] Você aciona o elevador de manutenção e sobe de volta à superfície. O Núcleo K-9 guarda sua posição — DESCER retoma de onde você parou.','accent');
+    checkNoiseEscalation();
+    if(state.combat) return;
+    renderAll();
+    presentContextChoices();
+  }
+
+  function spawnDungeonRoom(first){
+    if(!first){
+      state.dungeon.roomIdx++;
+      if(state.dungeon.roomIdx >= state.dungeon.roomsPerFloor){
+        state.dungeon.roomIdx = 0;
+        state.dungeon.floor++;
+        if(state.dungeon.floor > state.dungeon.maxFloors){ spawnDungeonBoss(); return; }
+        log(`\n[NÍVEL ${state.dungeon.floor}] O Núcleo K-9 se aprofunda. O ar muda de frequência.`,'accent');
+      }
+    }
+    let type;
+    if(state.dungeon.floor===2 && state.dungeon.roomIdx===1 && !state.dungeon.hackerUsed && !hasItem('cloak') && !state.flags.cloakHackerDealDone){
+      type = 'hacker';
+    } else {
+      type = weightedChoice(roomPoolForFloor(state.dungeon.floor));
+    }
+    if(type==='hacker') state.dungeon.hackerUsed = true;
+    state.dungeon.currentType = type;
+    state.dungeon.terminalHacked = false;
+    resolveDungeonRoom(type);
+  }
+
+  function resolveDungeonRoom(type){
+    log(`\n[${state.dungeon.floor}.${state.dungeon.roomIdx+1}] ${DUNGEON_DESC[type]}`,'sys');
+    if(type==='cache'){
+      const drop = randomSupplyDrop();
+      if(drop.ok) log(`Suprimento recuperado: ${ITEMS[drop.id].name}${drop.qty>1?` x${drop.qty}`:''}.`,'good');
+      else log('Carga cheia: suprimento deixado para trás.','warn');
+    } else if(type==='empty'){
+      log('Nada além de estática residual.','dim');
+    } else if(type==='glitch'){
+      glitchEvent();
+    } else if(type==='corpse'){
+      corpseEvent();
+    } else if(type==='terminal'){
+      log('O painel ainda aceita comandos. HACKEAR pode valer o risco — ou pode chamar atenção.','warn');
+    } else if(type==='hacker'){
+      hackerEncounter();
+    } else if(type==='turret' || type==='ambush'){
+      startCombat(pickDungeonEnemy(type), 'dungeon');
+      return;
+    }
+    if(state.gameOver) return;
+    renderAll();
+    presentContextChoices();
+  }
+
+  function hackerEncounter(){
+    if(hasItem('cloak')){
+      log('"Vejo que já está bem vestido." A silhueta sem rosto se desfaz no ruído antes que você pergunte mais.','dim');
+    } else if(state.flags.cloakHackerDealDone){
+      log('"Já fiz minha parte por hoje." O sinal cai antes que você responda.','dim');
+    } else {
+      log(`Uma silhueta sem rosto se sobrepõe ao seu canal. "Sei de um cofre de manutenção com uma Capa Termo-óptica esquecida lá dentro. Tenho a senha. ${HACKER_CLOAK_PRICE} créditos e ela é sua." A voz não tem pressa de se identificar — nem de provar que é confiável.`,'accent');
+    }
+  }
+
+  function buyVaultPassword(){
+    if(state.mode!=='dungeon' || !state.dungeon || state.dungeon.currentType!=='hacker'){ log('Sem ofertas disponíveis aqui.','warn'); return; }
+    if(hasItem('cloak') || state.flags.cloakHackerDealDone){ log('Não há mais nada a comprar aqui.','warn'); return; }
+    if(state.credits < HACKER_CLOAK_PRICE){ log('Créditos insuficientes.','warn'); return; }
+    state.credits -= HACKER_CLOAK_PRICE;
+    state.flags.cloakHackerDealDone = true;
+    log(`Você paga ${HACKER_CLOAK_PRICE} créditos. A silhueta repassa coordenadas e uma senha de oito dígitos.`,'sys');
+    if(Math.random()<0.8){
+      addItem('cloak',1);
+      log('A senha funciona de primeira. O cofre de manutenção se abre e a Capa Termo-óptica é sua.','good');
+    } else {
+      log('A senha falha — o cofre já trocou as travas. A silhueta já se foi, e seus créditos com ela.','bad');
+    }
+    renderAll();
+    presentContextChoices();
+  }
+
+  function glitchEvent(){
+    const r = rand(1,5);
+    if(r===1){ state.stress = clamp(state.stress-1,0,state.maxStress); log('O ruído neural baixa por um instante. Você respira como quem ainda pode se dar ao luxo.','good'); }
+    else if(r===2){ const c = rand(2,5); state.credits += c; log(`Um terminal fantasma transfere ${c} créditos perdidos.`,'good'); }
+    else if(r===3){ state.hp = clamp(state.hp-2,0,state.maxHp); log('A falha do ambiente devolve dor em forma de descarga.','warn'); if(state.hp<=0) gameOver('A última coisa que você viu foi um frame congelado do próprio corpo.'); }
+    else if(r===4){ state.noise = clamp(state.noise-2,0,state.maxNoise); log('Uma falha de áudio mascara seus próximos passos. Ruído -2.','good'); }
+    else log('A realidade engasga. Você segue em frente.','sys');
+  }
+
+  function corpseEvent(){
+    const r = rand(1,4);
+    if(r===1){ addItem('stim',1); log('No bolso do morto, um Stim Patch ainda selado.','good'); }
+    else if(r===2){ const c = rand(1,4); state.credits += c; log(`Bolso morto, créditos vivos: +${c}.`,'good'); }
+    else if(r===3){ const a = rand(2,4); if(addItem('ammo',a)) log(`Alguns cartuchos sobreviveram no coldre: +${a} munição.`,'good'); }
+    else { state.stress = clamp(state.stress+1,0,state.maxStress); log('Você reconhece o uniforme. Era de alguém que conhecia. Estresse +1.','warn'); checkStressOverload(); }
+  }
+
+  function spawnDungeonBoss(){
+    log('\n[NÚCLEO PROFUNDO] O corredor termina num átrio sintético. Algo enorme pulsa no centro.','accent');
+    unlockLore('boss_intro');
+    startCombat('archon','dungeon');
+  }
+
+  function ascendFromDungeon(){
+    state.mode = 'hub';
+    state.x = 2; state.y = 1;
+    log('\n[ASCENSÃO] O elevador sobe entre faíscas. A superfície parece quase gentil em comparação.','accent');
+  }
+
+  function advanceDungeon(){
+    if(state.mode!=='dungeon'){ log('Comando válido apenas dentro do Núcleo K-9.','warn'); return; }
+    if(state.combat){ log('Resolva o combate antes de avançar.','warn'); return; }
+    if(state.ap<=0){ log('PA insuficiente. Descanse para recuperar antes de avançar.','warn'); return; }
+    state.ap--;
+    spawnDungeonRoom(false);
+  }
+
+  /* ============================ WIN / LOSE ============================ */
+  function extract(){
+    if(state.mode!=='hub'){ log('Extração só é possível na superfície.','warn'); return; }
+    if(posKey(state.x,state.y)!=='0,0'){ log('Volte ao Refúgio Neon para chamar a extração.','warn'); return; }
+    if(!(state.flags.matrix && state.flags.objective && state.flags.runner)){
+      log('Faltam objetivos: Chip Omega, runner liberto e a matriz do Núcleo K-9.','warn');
+      return;
+    }
+    winGame();
+  }
+
+  function winGame(){
+    state.win = true; state.mode = 'win';
+    log('\n=== EXTRAÇÃO CONFIRMADA ===','good');
+    log('Morrow já está girando o motor. A cidade ainda apodrece, mas hoje ela paga aluguel para você.','good');
+    log(`Saída com ${state.hp}/${state.maxHp} HP, ${state.stress}/${state.maxStress} estresse e ${state.credits} créditos.`,'dim');
+    unlockLore('ending');
+    renderAll();
+    presentContextChoices();
+  }
+
+  function gameOver(msg){
+    if(state.gameOver) return;
+    state.gameOver = true; state.mode = 'gameover';
+    log('\n=== FALHA DE MISSÃO ===','bad');
+    log(msg,'bad');
+    log('Digite reiniciar ou use o chip abaixo para tentar de novo.','sys');
+    renderAll();
+    presentContextChoices();
+  }
+
+  /* ============================ INFO COMMANDS ============================ */
+  function unlockLore(key){
+    if(!state.codex.includes(key)){
+      state.codex.push(key);
+      log(`[CODEX] Novo registro recuperado.`,'accent');
+    }
+  }
+
+  function statusCmd(){
+    log(`HP ${state.hp}/${state.maxHp} | Estresse ${state.stress}/${state.maxStress} | Armadura ${state.armor} | PA ${state.ap}/${state.maxAp} | Ruído ${state.noise}/${state.maxNoise} | Créditos ${state.credits}`,'accent');
+    if(state.combat) log(`Combate: ${state.combat.enemy.name} (${state.combat.enemy.hp}/${state.combat.enemy.maxHp})`,'warn');
+  }
+
+  function inventoryCmd(){
+    if(!state.inventory.length){ log('Inventário vazio.','sys'); return; }
+    log('Inventário:','accent');
+    state.inventory.forEach(it=> log(`- ${ITEMS[it.id].name} x${it.qty} :: ${ITEMS[it.id].desc}`,'dim'));
+  }
+
+  function codexCmd(){
+    if(!state.codex.length){ log('Nenhum registro recuperado ainda.','sys'); return; }
+    log('Registros recuperados:','accent');
+    state.codex.forEach(k=> log(`- ${LORE[k]}`,'dim'));
+  }
+
+  function mapCmd(){
+    log('Mapa do Setor Alpha-7 (hub):','accent');
+    for(let y=0;y<3;y++){
+      let rowStr = '';
+      for(let x=0;x<3;x++){
+        const r = HUB[posKey(x,y)];
+        const here = (x===state.x && y===state.y && state.mode==='hub');
+        rowStr += (here ? '[*]' : '[ ]') + r.id.slice(0,4).padEnd(5,' ');
+      }
+      log(rowStr,'dim');
+    }
+    if(state.mode==='dungeon') log(`Núcleo K-9: Nível ${state.dungeon.floor}/${state.dungeon.maxFloors}, sala ${state.dungeon.roomIdx+1}/${state.dungeon.roomsPerFloor}`,'warn');
+  }
+
+  function help(){
+    log('Comandos: olhar, scan, status, inventario, saquear, falar [npc], subornar, move norte/sul/leste/oeste, usar [item], hackear, descansar, esperar, comprar [item], loja, descer, retroceder, avancar, extrair, codex, mapa, reiniciar.','sys');
+    log('Em combate: attack, hack, shoot, scan, use [item], flee.','sys');
+    log('PA funciona como reserva de "mana": hackear sempre custa 1 PA, no hub, no Núcleo K-9 e também dentro de combate. Sem PA, sem intrusão — descanse para recuperar.','warn');
+    log('Atalhos: clique nos chips do terminal ou use os botões fixos no rodapé.','dim');
+  }
+
+  /* ============================ CONTEXT CHOICES ============================ */
+  function presentContextChoices(){
+    if(state.mode==='select') return;
+    if(state.gameOver || state.win){
+      presentChoices([{ label:'Reiniciar Missão', cmd:'reiniciar' }]);
+      return;
+    }
+    if(state.mode==='combat'){
+      const chips = [
+        { label:'Atacar', cmd:'attack' }
+      ];
+      if(state.ap>0) chips.push({ label:`Hackear (-1 PA)`, cmd:'hack' });
+      chips.push({ label:'Varredura', cmd:'scan' });
+      if(hasItem('pistol')){
+        const ammoQty = (state.inventory.find(i=>i.id==='ammo')||{qty:0}).qty;
+        if(ammoQty>0) chips.push({ label:`Disparar (${ammoQty} balas restantes)`, cmd:'shoot' });
+      }
+      state.inventory.forEach(it=>{
+        if(['stim','battery','smoke','overclock','armor_patch','cipher'].includes(it.id)){
+          chips.push({ label:`Usar: ${ITEMS[it.id].name}`, cmd:`usar ${it.id}` });
+        }
+      });
+      chips.push({ label:'Fugir', cmd:'flee' });
+      presentChoices(chips);
+      return;
+    }
+    if(state.mode==='dungeon'){
+      const t = state.dungeon.currentType;
+      const chips = [];
+      if(t==='terminal' && !state.dungeon.terminalHacked) chips.push({ label:'Hackear Terminal', cmd:'hack' });
+      if(t==='hacker' && !hasItem('cloak') && !state.flags.cloakHackerDealDone){
+        chips.push({ label:`Comprar Senha do Cofre (${HACKER_CLOAK_PRICE}cr)`, cmd:'comprarsenha' });
+      }
+      chips.push({ label:'Avançar', cmd:'advance' });
+      chips.push({ label:'Descansar', cmd:'rest' });
+      chips.push({ label:'Usar Item', cmd:'usaritem' });
+      chips.push({ label:'Recuar à Superfície', cmd:'retroceder' });
+      chips.push({ label:'Status', cmd:'status' });
+      presentChoices(chips);
+      return;
+    }
+    const room = currentRoom();
+    const chips = [{ label:'Olhar', cmd:'look' }];
+    if((room.loot||[]).some(en=>!state.looted[`${state.x},${state.y}|${en.id}`])) chips.push({ label:'Saquear', cmd:'loot' });
+    (activeNpcs(room)).forEach(id=> chips.push({ label:`Falar: ${NPCS[id].name}`, cmd:`talk ${id}` }));
+    hubExits(state.x,state.y).forEach(dir=>{
+      const v = DIRS[dir];
+      const target = HUB[posKey(clamp(state.x+v[0],0,2), clamp(state.y+v[1],0,2))];
+      const locked = target.locked && !state.flags[target.lockFlag];
+      chips.push({ label:`Mover ▸ ${DIR_LABEL[dir]}${locked?' 🔒':''}`, cmd:`move ${dir}` });
+    });
+    if(room.hackable && !roomHackAlreadyDone(room)) chips.push({ label:'Hackear', cmd:'hack' });
+    if(room.id==='security' && !state.flags.vaultAccess && activeNpcs(room).includes('guard_npc')) chips.push({ label:`Subornar Guarda (${BRIBE_PRICE}cr)`, cmd:'subornar' });
+    if(room.shop) chips.push({ label:'Loja', cmd:'loja' });
+    if(room.id==='server' && state.flags.cipher) chips.push({ label:'Descer ao Núcleo', cmd:'descer' });
+    if(posKey(state.x,state.y)==='0,0' && state.flags.matrix && state.flags.objective && state.flags.runner) chips.push({ label:'Extrair', cmd:'extrair' });
+    chips.push({ label:'Usar Item', cmd:'usaritem' });
+    chips.push({ label:'Descansar', cmd:'rest' });
+    chips.push({ label:'Esperar', cmd:'wait' });
+    presentChoices(chips);
+  }
+
+  /* ============================ CLASS SELECT / BOOT ============================ */
+  function intro(){
+    log('BOOT // CYBÖRG :: BLACKWALL PROTOCOL','accent');
+    log('Terminal tático online. Carregando perfis de operativo disponíveis...','sys');
+    presentClassChoices();
+  }
+
+  function presentClassChoices(){
+    CLASSES.forEach(c=>{
+      log(`${c.name} — ${c.tagline}`,'sys');
+      log(`HP ${c.hp} | Estresse ${c.stress} | Armadura ${c.armor} | Melee +${c.melee} | Hack +${c.hack} | Ranged +${c.ranged} | Perk: ${c.perk} (${c.perkDesc})`,'dim');
+    });
+    presentChoices(CLASSES.map(c=>({ label:`Selecionar ${c.name}`, cmd:`classe ${c.key}` })));
+  }
+
+  function chooseClass(key){
+    const c = CLASSES.find(cl=>cl.key===key);
+    if(!c) return;
+    state.className = c.name; state.perkKey = c.key; state.perk = c.perk; state.perkDesc = c.perkDesc;
+    state.hp = c.hp; state.maxHp = c.hp; state.stress = c.stress; state.maxStress = c.stress; state.armor = c.armor; state.baseArmor = c.armor;
+    state.melee = c.melee; state.hack = c.hack; state.ranged = c.ranged; state.ap = c.ap; state.maxAp = c.ap; state.credits = c.credits + rand(0,3);
+    state.gear = c.gear.slice();
+    state.inventory = c.items.map(it=>({ id:it.id, qty:it.qty }));
+    state.mode = 'hub'; state.x = 0; state.y = 0;
+    log(`\nOperativo carregado: ${c.name}.`,'good');
+    log(`Perk ativo: ${c.perk} — ${c.perkDesc}`,'dim');
+    log('Contrato de Morrow: recupere o Chip Omega, liberte o runner capturado no Datavault Omega e extraia a matriz de dados do Núcleo K-9. Depois, volte ao Refúgio Neon e extraia.','warn');
+    enterRoom();
+    renderAll();
+    presentContextChoices();
+  }
+
+  function resetGame(){
+    state = freshState();
+    screen.innerHTML = '';
+    activeChoiceButtons = [];
+    closeDrawer();
+    intro();
+    renderAll();
+    cmdInput.value = '';
+    cmdInput.focus();
+  }
+
+  /* ============================ DISPATCHER ============================ */
+  function runCommand(raw){
+    const input = (raw||'').trim();
+    if(!input) return;
+    log(`> ${input}`, 'dim');
+
+    const lower = input.toLowerCase();
+    const parts = lower.split(/\s+/);
+    const c = parts[0];
+    const arg = parts.slice(1).join(' ');
+
+    if(state.mode==='select'){
+      if(c==='classe' && CLASSES.some(cl=>cl.key===arg)) chooseClass(arg);
+      else log('Selecione um operativo usando os chips ou digite: classe runner | classe chrome | classe magus','warn');
+      return;
+    }
+    if(state.gameOver || state.win){
+      if(['reiniciar','restart','reset'].includes(c)) return resetGame();
+      log('Missão encerrada. Digite reiniciar.','warn');
+      return;
+    }
+    if(state.mode==='combat'){
+      if(['attack','atacar','golpe'].includes(c)) return combatAction('attack');
+      if(['hack','hackear','h'].includes(c)) return combatAction('hack');
+      if(['shoot','disparar','atirar','fire'].includes(c)) return combatAction('ranged');
+      if(['scan','varrer'].includes(c)) return combatAction('scan');
+      if(['flee','fugir','correr'].includes(c)) return combatAction('flee');
+      if(c==='use' || c==='usar') return useItem(arg);
+      if(c==='status') return statusCmd();
+      if(['inventory','inv','inventario','inventário'].includes(c)) return inventoryCmd();
+      log('Ação inválida em combate. Use attack, hack, shoot, scan, use ou flee.','warn');
+      return;
+    }
+
+    switch(c){
+      case 'help': case 'ajuda': return help();
+      case 'look': case 'olhar': return look();
+      case 'scan': case 'varrer': return scan();
+      case 'status': return statusCmd();
+      case 'inventory': case 'inv': case 'inventario': case 'inventário': return inventoryCmd();
+      case 'loot': case 'saquear': case 'pegar': return loot();
+      case 'talk': case 'falar': return talk(arg);
+      case 'subornar': case 'bribe': return bribeGuard();
+      case 'move': case 'ir': case 'go': return move(arg);
+      case 'norte': case 'sul': case 'leste': case 'oeste': case 'n': case 's': case 'e': case 'o': return move(c);
+      case 'use': case 'usar': return useItem(arg);
+      case 'usaritem': return quickUse();
+      case 'hack': case 'hackear': case 'h': return hack();
+      case 'rest': case 'descansar': return rest();
+      case 'wait': case 'esperar': case 'passar': return waitTurn();
+      case 'attack': case 'atacar': case 'shoot': case 'disparar': return log('Sem alvo agora. Combate começa por encontro ou ambiente.','warn');
+      case 'buy': case 'comprar': return buy(arg);
+      case 'comprarsenha': return buyVaultPassword();
+      case 'loja': case 'shop': return openShop();
+      case 'descer': case 'descend': return descend();
+      case 'retroceder': case 'voltar': case 'recuar': case 'retreat': return retreatToSurface();
+      case 'avancar': case 'avançar': case 'advance': return advanceDungeon();
+      case 'extrair': case 'extract': return extract();
+      case 'drop': case 'descartar': return dropItem(arg);
+      case 'codex': return codexCmd();
+      case 'map': case 'mapa': return mapCmd();
+      case 'reiniciar': case 'restart': case 'reset': return resetGame();
+      default: log('Comando desconhecido. Digite ajuda.','warn');
+    }
+  }
+
+  /* ============================ RENDER ============================ */
+  function renderTopPills(){
+    topPills.innerHTML = `
+      <div class="pill hp"><span class="k">HP</span><span class="v">${state.hp}/${state.maxHp}</span></div>
+      <div class="pill ap"><span class="k">PA</span><span class="v">${state.ap}/${state.maxAp}</span></div>
+      <div class="pill stress"><span class="k">Estresse</span><span class="v">${state.stress}/${state.maxStress}</span></div>
+      <div class="pill noise"><span class="k">Ruído</span><span class="v">${state.noise}/${state.maxNoise}</span></div>
+      <div class="pill cred"><span class="k">Créditos</span><span class="v">${state.credits}</span></div>
+    `;
+  }
+
+  function buildStatusHTML(){
+    if(state.mode==='select') return `<div class="card">Selecione um operativo no terminal para iniciar a missão.</div>`;
+    const hpPct = clamp(state.hp/state.maxHp,0,1)*100;
+    const stPct = clamp(state.stress/state.maxStress,0,1)*100;
+    const apPct = state.maxAp ? clamp(state.ap/state.maxAp,0,1)*100 : 0;
+    const noPct = clamp(state.noise/state.maxNoise,0,1)*100;
+    return `
+      <div class="stat"><div class="k">HP</div><div class="v">${state.hp}/${state.maxHp}</div><div class="bar"><div class="fill" style="width:${hpPct}%"></div></div></div>
+      <div class="stat"><div class="k">Estresse</div><div class="v">${state.stress}/${state.maxStress}</div><div class="bar"><div class="fill stress" style="width:${stPct}%"></div></div></div>
+      <div class="stat"><div class="k">PA (mana de intrusão)</div><div class="v">${state.ap}/${state.maxAp}</div><div class="bar"><div class="fill ap" style="width:${apPct}%"></div></div></div>
+      <div class="stat"><div class="k">Ruído</div><div class="v">${state.noise}/${state.maxNoise}</div><div class="bar"><div class="fill noise" style="width:${noPct}%"></div></div></div>
+      <div class="statgrid">
+        <div class="stat"><div class="k">Armadura</div><div class="v">${state.armor}</div></div>
+        <div class="stat"><div class="k">Créditos</div><div class="v">${state.credits}</div></div>
+      </div>
+      <div class="card">
+        <h4>Loadout</h4>
+        Classe: ${esc(state.className||'—')}<br>
+        Perk: ${esc(state.perk||'—')}<br>
+        <span class="meta">${esc(state.perkDesc||'')}</span><br>
+        Equipamento: ${esc((state.gear||[]).join(' / ')||'—')}<br>
+        Melee +${state.melee} · Hack +${state.hack} · Ranged +${state.ranged}
+      </div>
+    `;
+  }
+
+  function buildLocationHTML(){
+    if(state.mode==='select') return `<div class="card">Aguardando seleção de operativo.</div>`;
+    let html = '';
+    if(state.mode==='combat'){
+      const e = state.combat.enemy;
+      html += `<div class="card"><h4>Combate</h4>${esc(e.name)}<br><span class="meta">HP ${e.hp}/${e.maxHp} · ARM ${e.armor} · ATK ${e.atk}${e.boss?' · CHEFE':''}</span></div>`;
+    } else if(state.mode==='dungeon'){
+      html += `<div class="card"><h4>Núcleo K-9</h4>Nível ${state.dungeon.floor}/${state.dungeon.maxFloors} — sala ${state.dungeon.roomIdx+1}/${state.dungeon.roomsPerFloor}<br><span class="meta">${esc(DUNGEON_DESC[state.dungeon.currentType]||'')}</span></div>`;
+    } else {
+      const room = currentRoom();
+      html += `<div class="card"><h4>${esc(room.name)}</h4>${esc(room.desc)}</div>`;
+      const npcsHere = activeNpcs(room);
+      if(npcsHere.length){
+        npcsHere.forEach(id=>{
+          const n = NPCS[id];
+          html += `<div class="npc-card"><strong>${esc(n.name)}</strong><br>"${esc(n.lines[0])}"</div>`;
+        });
+      }
+    }
+    html += `<div class="card"><h4>Objetivos</h4>`;
+    const objs = [
+      ['Comprometer os servidores (Cifra de Rede)', state.flags.cipher],
+      ['Abrir o Datavault Omega (chip + runner)', state.flags.vaultCleared],
+      ['Descer ao Núcleo K-9', state.flags.descended],
+      ['Derrotar o Archon e recuperar a matriz', state.flags.matrix],
+      ['Retornar ao Refúgio Neon e extrair', state.win]
+    ];
+    objs.forEach(([label, done])=>{
+      html += `<div class="obj-row${done?' done':''}">${esc(label)}</div>`;
+    });
+    html += `</div>`;
+    return html;
+  }
+
+  function buildInventoryHTML(){
+    if(!state.inventory.length) return `<div class="card">Inventário vazio.</div>`;
+    let html = `<div class="card meta" style="margin-bottom:10px;">Carga: ${currentLoad()}/${state.loadMax}</div>`;
+    state.inventory.forEach(it=>{
+      const def = ITEMS[it.id];
+      const w = itemWeight(it.id, it.qty);
+      const weightNote = it.id==='ammo' ? ` · ${w} carga (1 a cada 20)` : '';
+      html += `<div class="item-row">
+        <div><div>${esc(def.name)} <span class="meta">x${it.qty}${weightNote}</span></div><div class="meta">${esc(def.desc)}</div></div>
+        <div style="display:flex; gap:6px;">
+          <button class="mini-btn" data-cmd="usar ${it.id}">Usar</button>
+          <button class="mini-btn danger" data-cmd="descartar ${it.id}">Descartar</button>
+        </div>
+      </div>`;
+    });
+    return html;
+  }
+
+  function buildMapHTML(){
+    let html = '<div class="mini-grid">';
+    for(let y=0;y<3;y++){
+      for(let x=0;x<3;x++){
+        const r = HUB[posKey(x,y)];
+        const here = (x===state.x && y===state.y && state.mode==='hub');
+        html += `<div class="mini-cell${here?' here':''}">${esc(r.name)}</div>`;
+      }
+    }
+    html += '</div>';
+    if(state.mode==='dungeon'){
+      html += `<div class="card"><h4>Núcleo K-9</h4>Nível ${state.dungeon.floor}/${state.dungeon.maxFloors} — sala ${state.dungeon.roomIdx+1}/${state.dungeon.roomsPerFloor}</div>`;
+    }
+    html += buildLocationHTML();
+    return html;
+  }
+
+  function buildQuestHTML(){
+    let html = buildLocationHTML();
+    html += `<div class="card"><h4>Codex</h4>`;
+    if(!state.codex.length) html += `<span class="meta">Nenhum registro recuperado ainda.</span>`;
+    else state.codex.forEach(k=> html += `<div class="obj-row done" style="text-decoration:none; opacity:1; border-left-color:var(--ghost);">${esc(LORE[k])}</div>`);
+    html += `</div>`;
+    return html;
+  }
+
+  function buildHelpHTML(){
+    return `
+      <div class="card"><h4>Exploração</h4>
+        <span class="kbd">olhar</span> <span class="kbd">scan</span> <span class="kbd">saquear</span> <span class="kbd">falar [npc]</span> <span class="kbd">subornar</span> <span class="kbd">move norte/sul/leste/oeste</span> <span class="kbd">hackear</span> <span class="kbd">descansar</span> <span class="kbd">esperar</span>
+      </div>
+      <div class="card"><h4>Itens & Comércio</h4>
+        <span class="kbd">usar [item]</span> <span class="kbd">descartar [item]</span> <span class="kbd">loja</span> <span class="kbd">comprar [item]</span>
+      </div>
+      <div class="card"><h4>Combate</h4>
+        <span class="kbd">attack</span> <span class="kbd">hack</span> <span class="kbd">shoot</span> <span class="kbd">scan</span> <span class="kbd">use [item]</span> <span class="kbd">flee</span>
+      </div>
+      <div class="card"><h4>Núcleo K-9</h4>
+        <span class="kbd">descer</span> <span class="kbd">hackear</span> (terminais) <span class="kbd">avancar</span> <span class="kbd">retroceder</span> <span class="kbd">extrair</span>
+      </div>
+      <div class="card"><h4>Sistema</h4>
+        <span class="kbd">status</span> <span class="kbd">inventario</span> <span class="kbd">codex</span> <span class="kbd">mapa</span> <span class="kbd">reiniciar</span>
+      </div>
+      <div class="card meta">PA funciona como mana: hackear sempre custa 1 PA — no hub, no Núcleo K-9 e também durante combate (chip "Hackear" some sem PA). Movimento e avanço também consomem PA. Descanse/espere para recuperar.</div>
+    `;
+  }
+
+  function renderAll(){
+    renderTopPills();
+    leftPanelBody.innerHTML = buildStatusHTML();
+    rightPanelBody.innerHTML = buildLocationHTML();
+    if(currentDrawerKey) refreshDrawer();
+  }
+
+  /* ============================ DRAWER ============================ */
+  const DRAWER_TITLES = { status:'Status do Operativo', inv:'Inventário', map:'Mapa & Objetivos', quest:'Missão & Codex', help:'Ajuda' };
+  function openDrawer(key){
+    currentDrawerKey = key;
+    drawerOverlay.classList.add('open');
+    refreshDrawer();
+  }
+  function closeDrawer(){
+    currentDrawerKey = null;
+    drawerOverlay.classList.remove('open');
+  }
+  function refreshDrawer(){
+    drawerTitle.textContent = DRAWER_TITLES[currentDrawerKey] || '';
+    if(currentDrawerKey==='status') drawerBody.innerHTML = buildStatusHTML();
+    else if(currentDrawerKey==='inv') drawerBody.innerHTML = buildInventoryHTML();
+    else if(currentDrawerKey==='map') drawerBody.innerHTML = buildMapHTML();
+    else if(currentDrawerKey==='quest') drawerBody.innerHTML = buildQuestHTML();
+    else if(currentDrawerKey==='help') drawerBody.innerHTML = buildHelpHTML();
+  }
+
+  /* ============================ EVENTS ============================ */
+  document.querySelectorAll('.menu-btn').forEach(b=>{
+    b.addEventListener('click', ()=> openDrawer(b.getAttribute('data-drawer')));
+  });
+  drawerClose.addEventListener('click', closeDrawer);
+  drawerOverlay.addEventListener('click', (e)=>{ if(e.target===drawerOverlay) closeDrawer(); });
+  drawerBody.addEventListener('click', (e)=>{
+    const b = e.target.closest('[data-cmd]');
+    if(b) runCommand(b.getAttribute('data-cmd'));
+  });
+
+  sendBtn.addEventListener('click', ()=>{
+    const v = cmdInput.value; cmdInput.value = ''; runCommand(v);
+  });
+  cmdInput.addEventListener('keydown', (e)=>{
+    if(e.key==='Enter'){ const v = cmdInput.value; cmdInput.value=''; runCommand(v); }
+  });
+  window.addEventListener('keydown', (e)=>{
+    if(e.key==='/' && document.activeElement!==cmdInput){ e.preventDefault(); cmdInput.focus(); }
+    if(e.key==='Escape') closeDrawer();
+  });
+  screen.addEventListener('click', (e)=>{
+    if(e.target.tagName!=='BUTTON') cmdInput.focus();
+  });
+
+  /* ============================ INIT ============================ */
+  state = freshState();
+  intro();
+  renderAll();
+  cmdInput.focus();
+
+})();
+</script>
+</body>
+</html>
