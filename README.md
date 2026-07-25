@@ -111,7 +111,7 @@ This project does **not** reproduce the full text, artwork, or layout of the MÖ
 No build step required. Clone or download the repository and open `index.html` in any modern browser.
 
 ```bash
-git clone https://github.com/Loboguar4/morklike-runtime
+git clone https://github.com/AshenDesk/morklike-runtime
 cd morklike-runtime
 open index.html   # macOS
 # or double-click index.html on Windows/Linux
